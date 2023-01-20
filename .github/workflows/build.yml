@@ -19,5 +19,5 @@ jobs:
       - name: Archive artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: dist-files
+          name: Installer
           path: dist-files/b1gmailserver-*.run
