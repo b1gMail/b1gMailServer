@@ -21,4 +21,4 @@ jobs:
         with:
           name: dist-files
           path: |
-            dist-files
+            dist-files/*.run
