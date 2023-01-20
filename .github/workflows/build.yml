@@ -20,5 +20,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: dist-files
-          path: |
-            dist-files/*.run
+          path: dist-files/b1gmailserver-*.run
