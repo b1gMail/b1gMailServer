@@ -1,0 +1,6 @@
+.vscode
+src/build/
+Desktop.ini
+Thumbs.db
+ehthumbs.db
+.DS_Store

@@ -1,0 +1,7 @@
+find_path(MARIADBCLIENT_INCLUDE_DIRS mysql.h PATH_SUFFIXES mariadb)
+
+find_library(MARIADBCLIENT_LIBRARIES NAMES libmariadb mariadb PATH_SUFFIXES mariadb)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(mariadbclient DEFAULT_MSG MARIADBCLIENT_LIBRARIES MARIADBCLIENT_INCLUDE_DIRS)
+mark_as_advanced(MARIADBCLIENT_INCLUDE_DIRS MARIADBCLIENT_LIBRARIES)

@@ -1,0 +1,28 @@
+<h1>{lng:summary}</h1>
+
+{lng:summaryDesc}
+
+<blockquote>
+	<p>
+		<label>{lng:installType}</label><br />
+		{$components}
+	</p>
+	<p>
+		<label>{lng:mysqlDatabase}</label><br />
+		{$mySQL}
+	</p>
+	<p>
+		<label>{lng:userAndGroup}</label><br />
+		{$userAndGroup}
+	</p>
+</blockquote>
+
+{$warnings}
+
+{lng:summaryDesc2}
+
+<hr size="1" color="#DDDDDD" noshade="noshade" width="100%" />
+<div align="right">
+	<input type="hidden" name="step" value="6" />
+	<input id="next_button" type="submit" class="button" value=" {lng:install} &raquo; " />
+</div>

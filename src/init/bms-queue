@@ -1,0 +1,125 @@
+#!/bin/sh
+
+# chkconfig: 2345 99 01
+# description: b1gMailServer queue service
+
+### BEGIN INIT INFO
+# Provides: bms-queue
+# Required-Start: $local_fs $network $remote_fs $syslog
+# Should-Start: mysql mysqld mysql-server ypbind nscd ldap ntpd xntpd postfix sendmail
+# Required-Stop: $local_fs $network $remote_fs $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: start and stop b1gMailServer queue service
+# Description: b1gMailServer queue service
+### END INIT INFO
+
+bms_dir=/opt/b1gmailserver
+pid_file=$bms_dir/queue/pid
+action=$1
+stoptimeout=30
+
+if test -f /lib/lsb/init-functions ; then
+  . /lib/lsb/init-functions
+else
+  log_success_msg()
+  {
+    echo " DONE! $@"
+  }
+  log_failure_msg()
+  {
+    echo " FAILED! $@"
+  }
+fi
+
+case `echo "testing\c"`,`echo -n testing` in
+    *c*,-n*) echo_n=	;;
+    *c*,*)   echo_n=-n	;;
+    *)       echo_n=	;;
+esac
+
+case "$action" in
+  'start')
+	echo $echo_n "Starting b1gMailServer queue service"
+	$bms_dir/bin/bms-queue
+	return_value=$?
+	if [ "$return_value" = "0" ] ; then
+		log_success_msg
+	else
+		log_failure_msg
+	fi
+	exit $return_value
+	;;
+
+  'stop')
+	if test -s "$pid_file"
+    then
+      bms_pid=`cat $pid_file`
+      echo $echo_n "Stopping b1gMailServer queue service"
+      kill $bms_pid
+      return_value=$?
+      if [ "$return_value" = "0" ] ; then
+        timeout="$stoptimeout"
+        success="0"
+
+        while [ $timeout -gt 0 ] ; do
+          kill -0 $bms_pid >/dev/null 2>&1
+          return_value=$?
+
+          if [ "$return_value" = "1" ] ; then
+            success="1"
+            break
+          fi
+
+          sleep 1
+          timeout=`expr $timeout - 1`
+        done
+
+        if [ "$success" = "1" ] ; then
+          log_success_msg
+          exit 0
+        else
+          log_failure_msg "Timeout while stopping bms-queue"
+          exit 1
+        fi
+      else
+        log_failure_msg
+      fi
+      exit $return_value
+    else
+      log_success_msg
+      exit 0
+    fi
+    ;;
+
+  'restart')
+    if $0 stop  $other_args; then
+      $0 start $other_args
+    else
+      log_failure_msg "Failed to stop b1gMailServer queue service."
+      exit 1
+    fi
+    ;;
+
+   'status')
+    if test -s "$pid_file" ; then
+      bms_pid=`cat $pid_file`
+      if kill -0 $bms_pid 2>/dev/null ; then
+        log_success_msg "b1gMailServer queue service running ($bms_pid)"
+        exit 0
+      else
+        log_failure_msg "Pid file exists but b1gMailServer queue service NOT running"
+        exit 1
+      fi
+    else
+      log_failure_msg "b1gMailServer queue service NOT running"
+      exit 1
+	fi
+    ;;
+   *)
+      echo "Usage: $0  {start|stop|restart|status}"
+      exit 1
+    ;;
+esac
+
+exit 0

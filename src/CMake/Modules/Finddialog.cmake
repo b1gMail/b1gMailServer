@@ -1,0 +1,7 @@
+find_path(DIALOG_INCLUDE_DIRS dialog.h)
+
+find_library(DIALOG_LIBRARIES NAMES libdialog dialog)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(dialog DEFAULT_MSG DIALOG_LIBRARIES DIALOG_INCLUDE_DIRS)
+mark_as_advanced(DIALOG_INCLUDE_DIRS DIALOG_LIBRARIES)

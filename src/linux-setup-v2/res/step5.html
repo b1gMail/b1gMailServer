@@ -1,0 +1,19 @@
+<h1>{lng:userAndGroup}</h1>
+
+{lng:userAndGroupDesc}
+
+<blockquote>
+	<label for="userName">{lng:userName}</label><br />
+		<input id="userName" name="userName" type="text" value="{$userName}" size="32" />
+	<br /><br />
+	<label for="userGroup">{lng:userGroup}</label><br />
+		<input id="userGroup" name="userGroup" type="text" value="{$userGroup}" size="32" />
+</blockquote>
+
+{lng:userAndGroupWarning}
+
+<hr size="1" color="#DDDDDD" noshade="noshade" width="100%" />
+<div align="right">
+	<input type="hidden" name="step" value="5" />
+	<input id="next_button" type="submit" class="button" value=" {lng:next} &raquo; " />
+</div>

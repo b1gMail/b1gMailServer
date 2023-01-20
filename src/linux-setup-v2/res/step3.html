@@ -1,0 +1,69 @@
+<h1>{lng:installType}</h1>
+
+{lng:installTypeDesc}
+
+<br /><br />
+<table class="list">
+	<tr>
+		<th>{lng:component} / {lng:service}</th>
+		<th width="160">{lng:interface}</th>
+		<th width="80">{lng:port}</th>
+		<th width="75">{lng:available}</th>
+	</tr>
+
+	<tr>
+		<td><input type="checkbox" checked="checked" value="1" name="smtp" id="smtp" onclick="checkPortStatus('smtp')" />
+			<label for="smtp">SMTP</label></td>
+		<td><input type="text" name="smtpAddress" id="smtpAddress" size="18" value="0.0.0.0" onchange="checkPortStatus('smtp')" /></td>
+		<td><input type="text" name="smtpPort" id="smtpPort" size="5" value="25" onchange="checkPortStatus('smtp')" /></td>
+		<td align="center"><img src="/res/load_16.gif" id="smtpPortStatus" border="0" alt="" style="display:;" /></td>
+	</tr>
+	<tr>
+		<td><input type="checkbox" checked="checked" value="1" name="submission" id="submission" onclick="checkPortStatus('submission')" />
+			<label for="submission">Submission</label></td>
+		<td><input type="text" name="submissionAddress" id="submissionAddress" size="18" value="0.0.0.0" onchange="checkPortStatus('submission')" /></td>
+		<td><input type="text" name="submissionPort" id="submissionPort" size="5" value="587" onchange="checkPortStatus('submission')" /></td>
+		<td align="center"><img src="/res/load_16.gif" id="submissionPortStatus" border="0" alt="" style="display:;" /></td>
+	</tr>
+	<tr>
+		<td><input type="checkbox" checked="checked" value="1" name="pop3" id="pop3" onclick="checkPortStatus('pop3')" />
+			<label for="pop3">POP3</label></td>
+		<td><input type="text" name="pop3Address" id="pop3Address" size="18" value="0.0.0.0" onchange="checkPortStatus('pop3')" /></td>
+		<td><input type="text" name="pop3Port" id="pop3Port" size="5" value="110" onchange="checkPortStatus('pop3')" /></td>
+		<td align="center"><img src="/res/load_16.gif" id="pop3PortStatus" border="0" alt="" style="display:;" /></td>
+	</tr>
+	<tr>
+		<td><input {$imapDisabled} {$imapChecked} type="checkbox" value="1" name="imap" id="imap" onclick="checkPortStatus('imap')" />
+			<label for="imap">IMAP</label> {$imapText}</td>
+		<td><input {$imapDisabled}type="text" name="imapAddress" id="imapAddress" size="18" value="0.0.0.0" onchange="checkPortStatus('imap')" /></td>
+		<td><input {$imapDisabled}type="text" name="imapPort" id="imapPort" size="5" value="143" onchange="checkPortStatus('imap')" /></td>
+		<td align="center">{$imapImg}</td>
+	</tr>
+	<tr>
+		<td colspan="4"><input type="checkbox" value="1" checked="checked" name="sendmailWrapper" id="sendmailWrapper" />
+			<label for="sendmailWrapper">sendmail-Wrapper</label></td>
+	</tr>
+</table>
+
+<br />
+<b>{lng:importantNotes}:</b>
+<ul>
+	<li>{lng:interfaceNote}</li>
+	<li>{lng:portNote}</li>
+	<li>{lng:mxNote}</li>
+</ul>
+
+<hr size="1" color="#DDDDDD" noshade="noshade" width="100%" />
+<div align="right">
+	<input type="hidden" name="step" value="3" />
+	<input id="next_button" type="submit" class="button" value=" {lng:next} &raquo; " />
+</div>
+
+<script language="javascript">
+<!--
+	checkPortStatus('smtp');
+	checkPortStatus('submission');
+	checkPortStatus('pop3');
+	checkPortStatus('imap');
+//-->
+</script>
