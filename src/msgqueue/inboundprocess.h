@@ -33,7 +33,7 @@ public:
 public:
     void beginSession();
     void endSession();
-    void deliver(const string &from, const string &to, FILE *stream);
+    void deliver(const string &from, const string &to, int flags, FILE *stream);
 
 public:
     bool keepAlive;

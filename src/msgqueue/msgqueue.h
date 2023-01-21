@@ -140,6 +140,7 @@ public:
     int smtpUser;
     int b1gMailUser;
     int deliveryStatusID;
+    int flags;
 };
 
 class MSGQueueResult
@@ -169,6 +170,12 @@ class DeliveryRule;
 class DeliveryRules;
 class APNSDispatcher;
 
+enum MSGQueueFlags
+{
+    MSGQUEUEFLAG_IS_SPAM        = (1 << 0),
+    MSGQUEUEFLAG_IS_INFECTED    = (1 << 1)
+};
+
 class MSGQueue : public b1gMailServer::MSGQueue
 {
 public:
@@ -189,7 +196,8 @@ public:
                         int ib1gMailUser = 0,
                         bool bInstantRelease = true,
                         bool bTLS = false,
-                        int iDeliveryStatusID = 0);
+                        int iDeliveryStatusID = 0,
+                        int iFlags = 0);
     void ReleaseMessages(vector<int> &IDs);
     void DeleteMessages(vector<int> &IDs);
     bool BounceMessage(MSGQueueItem *cQueueItem, MSGQueueResult *result);

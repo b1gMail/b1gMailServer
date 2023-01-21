@@ -113,7 +113,8 @@ Milter::Milter(const string &host, const int port, const bool isUnixSocket, cons
       sock(NULL), negAction(~0), negProtocol(0),
       lastAcceptRejectAction(SMFIR_ACCEPT),
       replBodyReceived(false),
-      defaultAction(defaultAct)
+      defaultAction(defaultAct),
+      doQuarantine(false)
 {
 
 }
@@ -332,7 +333,7 @@ void Milter::checkResponse(bool *isAcceptRejectAction)
         break;
 
     case SMFIR_QUARANTINE:
-        // not supported
+        doQuarantine = true;
         break;
 
     case SMFIR_REJECT:

@@ -184,6 +184,11 @@ public:
         return this->body;
     }
 
+    bool getDoQuarantine() const
+    {
+        return this->doQuarantine;
+    }
+
     MilterResponse process();
 
     pair<int, string> getReplyCode() const
@@ -226,6 +231,7 @@ private:
     MilterResponse defaultAction;
     int replyCodeNum;
     string replyCodeText;
+    bool doQuarantine;
 
     Milter(const Milter &);
     Milter &operator=(const Milter &);

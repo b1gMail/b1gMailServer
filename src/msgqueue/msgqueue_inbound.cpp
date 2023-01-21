@@ -45,7 +45,7 @@ void MSGQueue::ProcessInbound(MSGQueueItem *item, MSGQueueResult *result)
         proc->beginSession();
 
         // actually deliver
-        proc->deliver(item->from, item->to, stream);
+        proc->deliver(item->from, item->to, item->flags, stream);
 
         // close message
         fclose(stream);

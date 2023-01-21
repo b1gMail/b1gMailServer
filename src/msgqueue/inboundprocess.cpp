@@ -89,7 +89,7 @@ void InboundProcess::endSession()
     this->sessionActive = false;
 }
 
-void InboundProcess::deliver(const string &from, const string &to, FILE *stream)
+void InboundProcess::deliver(const string &from, const string &to, int flags, FILE *stream)
 {
     char szBuffer[INBOUND_BUFFER_SIZE];
 
@@ -112,6 +112,20 @@ void InboundProcess::deliver(const string &from, const string &to, FILE *stream)
                     "b1gMail pipe RCPT TO command failed (keep-alive: 1).",
                     QUEUE_STATUS_TEMPORARY_ERROR,
                     "4.3.0");
+            }
+
+            if(flags != 0)
+            {
+                // FLAGS
+                fprintf(fpPipeIn, "FLAGS %d\r\n", flags);
+                fflush(fpPipeIn);
+                if(fgets(szBuffer, sizeof(szBuffer), fpPipeOut) == NULL
+                    || strlen(szBuffer) < 3
+                    || strncmp(szBuffer, "250", 3) != 0)
+                {
+                    // Since b1gMail versions < 7.4 do not support this command,
+                    // silently ignore any error response.
+                }
             }
 
             // DATA

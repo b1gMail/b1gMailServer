@@ -765,7 +765,7 @@ void MSGQueue::ProcessQueue()
 
     // get messages
     queue<MSGQueueItem *> work;
-    res = db->Query("SELECT `id`,`type`,`date`,`size`,`from`,`to`,`attempts`,`last_attempt`,`last_status`,`smtp_user`,LOWER(`to_domain`),`last_status_code`,`last_diagnostic_code`,`b1gmail_user`,`deliverystatusid` FROM bm60_bms_queue WHERE `deleted`=0 AND `last_attempt`<(%d-`attempts`*%d) AND `active`=0 ORDER BY `attempts`,`last_attempt`,`id` LIMIT %d",
+    res = db->Query("SELECT `id`,`type`,`date`,`size`,`from`,`to`,`attempts`,`last_attempt`,`last_status`,`smtp_user`,LOWER(`to_domain`),`last_status_code`,`last_diagnostic_code`,`b1gmail_user`,`deliverystatusid`,`flags` FROM bm60_bms_queue WHERE `deleted`=0 AND `last_attempt`<(%d-`attempts`*%d) AND `active`=0 ORDER BY `attempts`,`last_attempt`,`id` LIMIT %d",
                    (int)time(NULL), atoi(cfg->Get("queue_retry")),
                    itemsToRead+1);
     moreQueueEntries = res->NumRows() > itemsToRead;
@@ -916,6 +916,7 @@ void MSGQueue::RowToMSGQueueItem(MYSQL_ROW row, MSGQueueItem *cQueueItem)
     cQueueItem->lastDiagnosticCode = row[12];
     cQueueItem->b1gMailUser         = atoi(row[13]);
     cQueueItem->deliveryStatusID    = atoi(row[14]);
+    cQueueItem->flags               = atoi(row[15]);
 }
 
 /*

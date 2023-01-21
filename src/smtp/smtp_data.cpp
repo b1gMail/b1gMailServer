@@ -227,7 +227,7 @@ void SMTP::ProcessMessage()
             connectionInfo.authMethod = this->strAuthMethod;
 
             // process milters
-            bool doRejectFromMilter = false, doShutdownFromMilter = false;
+            bool doRejectFromMilter = false, doShutdownFromMilter = false, doQuarantineFromMilter = false;
             MYSQL_ROW row;
             MySQL_Result *res = db->Query("SELECT `milterid`,`title`,`hostname`,`port`,`flags`,`default_action` FROM bm60_bms_milters ORDER BY `pos` ASC");
             while((row = res->FetchRow()))
@@ -259,10 +259,11 @@ void SMTP::ProcessMessage()
 
                     if(mr == SMFIR_ACCEPT || mr == SMFIR_CONTINUE)
                     {
-                        this->vHeaders      = m.getHeaders();
-                        this->strBody       = m.getBody();
-                        this->vRecipients   = m.getRcptTo();
-                        this->strReturnPath = m.getMailFrom();
+                        this->vHeaders          = m.getHeaders();
+                        this->strBody           = m.getBody();
+                        this->vRecipients       = m.getRcptTo();
+                        this->strReturnPath     = m.getMailFrom();
+                        doQuarantineFromMilter  = m.getDoQuarantine();
                     }
 
                     switch(mr)
@@ -353,7 +354,8 @@ void SMTP::ProcessMessage()
                         this->iUserID != 0 ? this->iUserID : this->ib1gMailUserID,
                         false,
                         this->bTLSMode,
-                        this->vRecipients.at(i).iDeliveryStatusID)) <= 0)
+                        this->vRecipients.at(i).iDeliveryStatusID,
+                        doQuarantineFromMilter ? MSGQUEUEFLAG_IS_SPAM : 0)) <= 0)
                     {
                         bOK = false;
                         break;

@@ -141,7 +141,8 @@ int MSGQueue::EnqueueMessage(vector<pair<string, string> > headers,
                         int ib1gMailUser,
                         bool bInstantRelease,
                         bool bTLS,
-                        int iDeliveryStatusID)
+                        int iDeliveryStatusID,
+                        int iFlags)
 {
     int iID, iSize = 1024 + (int)body.size(); // just a wild guess
     string strFileName;
@@ -171,8 +172,8 @@ int MSGQueue::EnqueueMessage(vector<pair<string, string> > headers,
     {
         // lock table to avoid duplicate random IDs
         db->Query("LOCK TABLES bm60_bms_queue WRITE");
-        db->Query("INSERT INTO bm60_bms_queue(`id`,`active`,`type`,`date`,`size`,`from`,`to`,`to_domain`,`attempts`,`last_attempt`,`last_status`,`smtp_user`,`b1gmail_user`,`deliverystatusid`) "
-                    "VALUES(%d,1,'%d','%d','%d','%q','%q','%q',0,0,0,'%d','%d','%d')",
+        db->Query("INSERT INTO bm60_bms_queue(`id`,`active`,`type`,`date`,`size`,`from`,`to`,`to_domain`,`attempts`,`last_attempt`,`last_status`,`smtp_user`,`b1gmail_user`,`deliverystatusid`,`flags`) "
+                    "VALUES(%d,1,'%d','%d','%d','%q','%q','%q',0,0,0,'%d','%d','%d','%d')",
                     this->GenerateRandomQueueID(),
                     iType,
                     (int)time(NULL),
@@ -182,14 +183,15 @@ int MSGQueue::EnqueueMessage(vector<pair<string, string> > headers,
                     strToDomain,
                     iSMTPUser,
                     ib1gMailUser,
-                    iDeliveryStatusID);
+                    iDeliveryStatusID,
+                    iFlags);
         iID = (int)db->InsertId();
         db->Query("UNLOCK TABLES");
     }
     else
     {
-        db->Query("INSERT INTO bm60_bms_queue(`active`,`type`,`date`,`size`,`from`,`to`,`to_domain`,`attempts`,`last_attempt`,`last_status`,`smtp_user`,`b1gmail_user`,`deliverystatusid`) "
-                    "VALUES(1,'%d','%d','%d','%q','%q','%q',0,0,0,'%d','%d','%d')",
+        db->Query("INSERT INTO bm60_bms_queue(`active`,`type`,`date`,`size`,`from`,`to`,`to_domain`,`attempts`,`last_attempt`,`last_status`,`smtp_user`,`b1gmail_user`,`deliverystatusid`,`flags`) "
+                    "VALUES(1,'%d','%d','%d','%q','%q','%q',0,0,0,'%d','%d','%d','%d')",
                     iType,
                     (int)time(NULL),
                     iSize,
@@ -198,7 +200,8 @@ int MSGQueue::EnqueueMessage(vector<pair<string, string> > headers,
                     strToDomain,
                     iSMTPUser,
                     ib1gMailUser,
-                    iDeliveryStatusID);
+                    iDeliveryStatusID,
+                    iFlags);
         iID = (int)db->InsertId();
     }
 
