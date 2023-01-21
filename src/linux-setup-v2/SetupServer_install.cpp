@@ -411,7 +411,7 @@ bool SetupServer::createXinetdConfig(string serviceName, int servicePort, string
                 str << "        <string>" << pch << "</string>" << endl;
                 pch = strtok(NULL, " ");
             }
-            free(temp);
+            free(tmp);
         }
 
         str << "    </array>" << endl;
