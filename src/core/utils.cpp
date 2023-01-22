@@ -1331,8 +1331,10 @@ void Utils::MilliSleep(unsigned int milliSeconds)
 #endif
 }
 
-int Utils::LookupUser(const char *szAddress, bool findDeleted)
+int Utils::LookupUser(const char *szAddress, bool forLogin, bool findDeleted)
 {
+    bool bHaveLoginField = strcmp(cfg->Get("enable_aliaslogin"), "1") == 0;
+
     MYSQL_ROW row;
     int iResult = 0;
 
@@ -1351,7 +1353,9 @@ int Utils::LookupUser(const char *szAddress, bool findDeleted)
     // alias?
     if(iResult == 0)
     {
-        res = db->Query("SELECT bm60_users.`id`,bm60_users.`gesperrt` FROM bm60_users,bm60_aliase WHERE (bm60_aliase.`type`&2)!=0 AND bm60_aliase.`email`='%q' AND bm60_users.`id`=bm60_aliase.`user` LIMIT 1",
+        res = db->Query((forLogin && bHaveLoginField)
+                ? "SELECT bm60_users.`id`,bm60_users.`gesperrt` FROM bm60_users,bm60_aliase WHERE (bm60_aliase.`type`&2)!=0 AND bm60_aliase.`email`='%q' AND bm60_aliase.`login`='yes' AND bm60_users.`id`=bm60_aliase.`user` LIMIT 1"
+                : "SELECT bm60_users.`id`,bm60_users.`gesperrt` FROM bm60_users,bm60_aliase WHERE (bm60_aliase.`type`&2)!=0 AND bm60_aliase.`email`='%q' AND bm60_users.`id`=bm60_aliase.`user` LIMIT 1",
             szAddress);
         if(res->NumRows()  == 1)
         {
@@ -1393,9 +1397,10 @@ int Utils::LookupUser(const char *szAddress, bool findDeleted)
 
 int Utils::GetAlias(const char *szEMail)
 {
+    bool bHaveLoginField = strcmp(cfg->Get("enable_aliaslogin"), "1") == 0;
     int iResult = -1;
 
-    MySQL_Result *res = db->Query("SELECT user FROM bm60_aliase WHERE email='%q' LIMIT 1",
+    MySQL_Result *res = db->Query(bHaveLoginField ? "SELECT user FROM bm60_aliase WHERE email='%q' AND `login`='yes' LIMIT 1" : "SELECT user FROM bm60_aliase WHERE email='%q' LIMIT 1",
         szEMail);
     MYSQL_ROW row;
     while((row = res->FetchRow()))

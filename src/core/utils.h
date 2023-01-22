@@ -256,7 +256,7 @@ namespace Core
         int GetAlias(const char *szEMail);
 
         // lookup user
-        int LookupUser(const char *szAddress, bool findDeleted = true);
+        int LookupUser(const char *szAddress, bool forLogin, bool findDeleted = true);
 
         // sleep for milliseconds
         void MilliSleep(unsigned int milliSeconds);

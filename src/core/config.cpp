@@ -187,10 +187,23 @@ void Config::ReadDBConfig()
         delete res;
     }
 
+    bool bHaveAliasLoginField = false;
+    res = db->Query("SHOW FIELDS FROM `bm60_aliase`");
+    while((row = res->FetchRow()))
+    {
+        if(strcmp(row[0], "login") == 0)
+        {
+            bHaveAliasLoginField = true;
+            break;
+        }
+    }
+    delete res;
+
     this->items["enable_ap"] = bHaveAPTable ? "1" : "0";
     this->items["enable_mdstatus"] = bHaveMDStatusTable ? "1" : "0";
     this->items["enable_blobstorage"] = bHaveBlobStorage ? "1" : "0";
     this->items["enable_sendstats"] = bHaveSendStats ? "1" : "0";
+    this->items["enable_aliaslogin"] = bHaveAliasLoginField ? "1" : "0";
 }
 
 void Config::Dump()

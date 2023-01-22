@@ -164,7 +164,7 @@ void SMTP::Auth(char *szLine)
         // perform authentication
         int iLastLogin = 0;
         bool bHaveSendStats = strcmp(cfg->Get("enable_sendstats"), "1") == 0;
-        int iUserID = utils->LookupUser((char *)strUser.c_str()), iGroupID = 0;
+        int iUserID = utils->LookupUser(strUser.c_str(), true), iGroupID = 0;
         if(iUserID > 0)
         {
             MYSQL_ROW row;

@@ -225,7 +225,7 @@ void Milter::addDelRcpt(const MilterPacket &p)
     if(p.cmd == SMFIR_ADDRCPT && !exists)
     {
         SMTPRecipient newRcpt;
-        newRcpt.iLocalRecipient = utils->LookupUser(rcpt.c_str(), false);
+        newRcpt.iLocalRecipient = utils->LookupUser(rcpt.c_str(), false, false);
         newRcpt.iDeliveryStatusID = 0;
         newRcpt.strAddress = rcpt;
         rcptTo.push_back(newRcpt);

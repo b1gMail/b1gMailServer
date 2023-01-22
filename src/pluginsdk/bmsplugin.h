@@ -28,7 +28,7 @@
 /**
  * Plugin interface version
  */
-#define BMS_PLUGIN_INTERFACE_VERSION    12
+#define BMS_PLUGIN_INTERFACE_VERSION    13
 
 /**
  * Log priority constants
@@ -363,10 +363,11 @@ namespace b1gMailServer
          * Get user ID for email address
          *
          * @var char *EMail Email address
+         * @var bool forLogin Set to true if lookup is being done for login
          * @var bool findDeleted Find users which are marked as deleted?
          * @return int User ID (success) or 0 (error)
          */
-        virtual int LookupUser(const char *EMail, bool findDeleted = true) = 0;
+        virtual int LookupUser(const char *EMail, bool forLogin, bool findDeleted = true) = 0;
 
         /**
          * Sleep for milliseconds
