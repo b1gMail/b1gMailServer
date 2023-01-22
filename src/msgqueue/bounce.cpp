@@ -45,7 +45,7 @@ bool MSGQueue::BounceMessage(MSGQueueItem *cQueueItem, MSGQueueResult *result)
     }
 
     // local user id?
-    int iReturnPathUserID = utils->LookupUser((char *)cQueueItem->from.c_str());
+    int iReturnPathUserID = utils->LookupUser((char *)cQueueItem->from.c_str(), false);
 
     // generate boundary string
     char szBoundaryKey[33], szMessageID[33];

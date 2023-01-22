@@ -983,7 +983,7 @@ void SMTP::Rcpt(char *szLine)
     bool bOK = false;
     SMTPRecipient cRecipient;
     cRecipient.strAddress = szForwardPath;
-    cRecipient.iLocalRecipient = utils->LookupUser(szForwardPath, false);
+    cRecipient.iLocalRecipient = utils->LookupUser(szForwardPath, false, false);
     cRecipient.iDeliveryStatusID = iXb1gMailDSID;
 
     // outbound
