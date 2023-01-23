@@ -181,6 +181,7 @@ void MySQL_DB::Log(int iComponent, int iSeverity, char *szEntry)
 #else
             ctime_r(&iTime, szDate);
 #endif
+            szDate[strlen(szDate)-1] = '\0';
 
             // component name
             if(iComponent == CMP_CORE)
