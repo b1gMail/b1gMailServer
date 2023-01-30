@@ -76,8 +76,13 @@ struct IMAPSearchItem
     string strParam1;
     string strParam2;
 
+    bool bParam1Set;
+    bool bParam2Set;
+
     IMAPSearchItem()
         : tItemType(SEARCH_INVALID)
+        , bParam1Set(false)
+        , bParam2Set(false)
     {}
 
     operator bool() const

@@ -40,17 +40,23 @@ void IMAP::Search(char *szLine, bool bUID)
         bool bParsingRequired = false, bReadingRequired = false;
 
         int iParams = 0;
-        IMAPSearchItem cItem;
         string strItem;
         for(int i=2; i<(int)cArgs.size(); i++)
         {
             strItem = cArgs.at(i);
-            if(iParams > 0 && cItem)
+            if(iParams > 0 && !vSearch.empty())
             {
-                if(cItem.strParam1.empty())
+                IMAPSearchItem &cItem = vSearch.at(vSearch.size()-1);
+                if(!cItem.bParam1Set)
+                {
                     cItem.strParam1 = strItem;
-                else if(cItem.strParam2.empty())
+                    cItem.bParam1Set = true;
+                }
+                else if(!cItem.bParam2Set)
+                {
                     cItem.strParam2 = strItem;
+                    cItem.bParam2Set = true;
+                }
                 --iParams;
                 continue;
             }
@@ -59,21 +65,21 @@ void IMAP::Search(char *szLine, bool bUID)
             if(strcasecmp(strItem.c_str(), "answered") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_ANSWERED;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "bcc") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_BCC;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "before") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_BEFORE;
                 vSearch.push_back(cItem);
             }
@@ -82,42 +88,42 @@ void IMAP::Search(char *szLine, bool bUID)
                 bParsingRequired = true;
 
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_BODY;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "cc") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_CC;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "deleted") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_DELETED;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "draft") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_DRAFT;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "flagged") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_FLAGGED;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "from") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_FROM;
                 vSearch.push_back(cItem);
             }
@@ -126,70 +132,70 @@ void IMAP::Search(char *szLine, bool bUID)
                 bParsingRequired = true;
 
                 iParams = 2;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_HEADER;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "keyword") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_KEYWORD;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "larger") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_LARGER;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "new") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_NEW;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "not") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_NOT;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "old") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_OLD;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "on") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_ON;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "or") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_OR;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "recent") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_RECENT;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "seen") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_SEEN;
                 vSearch.push_back(cItem);
             }
@@ -198,7 +204,7 @@ void IMAP::Search(char *szLine, bool bUID)
                 bParsingRequired = true;
 
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_SENTBEFORE;
                 vSearch.push_back(cItem);
             }
@@ -207,7 +213,7 @@ void IMAP::Search(char *szLine, bool bUID)
                 bParsingRequired = true;
 
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_SENTON;
                 vSearch.push_back(cItem);
             }
@@ -216,28 +222,28 @@ void IMAP::Search(char *szLine, bool bUID)
                 bParsingRequired = true;
 
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_SENTSINCE;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "since") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_SINCE;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "smaller") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_SMALLER;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "subject") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_SUBJECT;
                 vSearch.push_back(cItem);
             }
@@ -246,70 +252,70 @@ void IMAP::Search(char *szLine, bool bUID)
                 bReadingRequired = true;
 
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_TEXT;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "to") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_TO;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "uid") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_UID;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "unanswered") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_UNANSWERED;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "undeleted") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_UNDELETED;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "undraft") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_UNDRAFT;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "unflagged") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_UNFLAGGED;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "unkeyword") == 0)
             {
                 iParams = 1;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_UNKEYWORD;
                 vSearch.push_back(cItem);
             }
             else if(strcasecmp(strItem.c_str(), "unseen") == 0)
             {
                 iParams = 0;
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_UNSEEN;
                 vSearch.push_back(cItem);
             }
             else if(IS_DIGIT(*strItem.c_str()))
             {
                 // message set
-                cItem = IMAPSearchItem();
+                IMAPSearchItem cItem;
                 cItem.tItemType = IMAPSearchItem::SEARCH_MESSAGESET;
                 cItem.strParam1 = strItem;
                 vSearch.push_back(cItem);
