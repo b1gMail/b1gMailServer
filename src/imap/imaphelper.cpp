@@ -1714,12 +1714,15 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
 
     // fetch user folders
     stack<pair<int, string> > parents;
+    set<int> visited;
     parents.push(pair<int, string>(-1, ""));
 
     while(!parents.empty())
     {
         pair<int, string> parent = parents.top();
         parents.pop();
+
+        visited.insert(parent.first);
 
         map<int, vector<IMAPFolder> >::iterator it = foldersByParent.find(parent.first);
         if(it != foldersByParent.end())
@@ -1731,7 +1734,7 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
                 f.strFullName = f.strReference.empty() ? f.strName : (f.strReference + "/" + f.strName);
                 result.push_back(f);
 
-                if(f.iID != parent.first)
+                if(visited.find(f.iID) == visited.end())
                 {
                     parents.push(pair<int, string>(f.iID, f.strFullName));
                 }
