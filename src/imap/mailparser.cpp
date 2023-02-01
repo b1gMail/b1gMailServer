@@ -395,8 +395,8 @@ MailStructItem MailParser::Parse(const string &strMsg)
     else
     {
         cItem.strText = strMsg.substr(breakPos + breakLength);
-        cItem.strHeader = strMsg.substr(0, breakPos + 1);
-        cItem.strHeader2 = cItem.strHeader + "\r\n";
+        cItem.strHeader = strMsg.substr(0, breakPos);
+        cItem.strHeader2 = cItem.strHeader + "\r\n\r\n";
     }
 
     // parse headers
