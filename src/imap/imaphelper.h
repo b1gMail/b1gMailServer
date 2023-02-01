@@ -109,8 +109,6 @@ public:
     static string FolderCondition(MySQL_DB *db, int iFolderID);
 
 private:
-    static void FetchFolders_Step(MySQL_DB *db, IMAPFolderList &list, int iUserID, int iParent = -1, const string &strParentName = NULL, int iDepth = 0);
-
     IMAPHelper();
 };
 

@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <set>
 #include <iostream>
+#include <stack>
 
 static const char *szMonths[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
@@ -1669,25 +1670,16 @@ Again:
 }
 
 /*
- * Folder fetch recursorsion step
+ * Fetch folder list for an user
  */
-void IMAPHelper::FetchFolders_Step(MySQL_DB *db, IMAPFolderList &list, int iUserID, int iParent, const string &strParentName, int iDepth)
+IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
 {
-    if(iDepth > IMAP_FOLDER_MAXDEPTH)
-    {
-        db->Log(CMP_CORE, PRIO_WARNING, utils->PrintF("Aborting FetchFolders recursion for user %d at parent folder %d (depth > %d) - corrupt folder structure?",
-                                                      iUserID,
-                                                      iParent,
-                                                      iDepth));
-        return;
-    }
-
-    MySQL_Result *res = db->Query("SELECT titel,id,parent,subscribed,intelligent FROM bm60_folders WHERE userid='%d' %sAND parent='%d' ORDER BY titel ASC",
+    // fetch all folders of user and store by parent
+    map<int, vector<IMAPFolder> > foldersByParent;
+    MySQL_Result *res = db->Query("SELECT titel,id,parent,subscribed,intelligent FROM bm60_folders WHERE userid='%d' %sORDER BY titel ASC",
                                   iUserID,
-                                  (strcmp(cfg->Get("imap_intelligentfolders"), "1") == 0 ? "" : "AND intelligent=0 "),
-                                  iParent);
+                                  (strcmp(cfg->Get("imap_intelligentfolders"), "1") == 0 ? "" : "AND intelligent=0 "));
     MYSQL_ROW row;
-
     while((row = res->FetchRow()))
     {
         IMAPFolder f;
@@ -1699,29 +1691,14 @@ void IMAPHelper::FetchFolders_Step(MySQL_DB *db, IMAPFolderList &list, int iUser
             f.strName[pos] = '-';
 
         f.bSubscribed = atoi(row[3]) == 1;
-        f.strReference = strParentName;
         f.bIntelligent = atoi(row[4]) == 1;
-
-        if(strParentName.empty())
-            f.strFullName = f.strName;
-        else
-            f.strFullName = strParentName + "/" + f.strName;
-
         f.strAttributes = "";
 
-        list.push_back(f);
-
-        IMAPHelper::FetchFolders_Step(db, list, iUserID, f.iID, f.strFullName, iDepth + 1);
+        int parentID = atoi(row[2]);
+        foldersByParent[parentID].push_back(f);
     }
-
     delete res;
-}
 
-/*
- * Fetch folder list for an user
- */
-IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
-{
     IMAPFolderList result;
 
     // inbox folder
@@ -1736,7 +1713,31 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
     result.push_back(fInbox);
 
     // fetch user folders
-    IMAPHelper::FetchFolders_Step(db, result, iUserID, -1, "");
+    stack<pair<int, string> > parents;
+    parents.push(pair<int, string>(-1, ""));
+
+    while(!parents.empty())
+    {
+        pair<int, string> parent = parents.top();
+        parents.pop();
+
+        map<int, vector<IMAPFolder> >::iterator it = foldersByParent.find(parent.first);
+        if(it != foldersByParent.end())
+        {
+            for(vector<IMAPFolder>::iterator folderIt = it->second.begin(); folderIt != it->second.end(); ++folderIt)
+            {
+                IMAPFolder f = *folderIt;
+                f.strReference = parent.second;
+                f.strFullName = f.strReference.empty() ? f.strName : (f.strReference + "/" + f.strName);
+                result.push_back(f);
+
+                if(f.iID != parent.first)
+                {
+                    parents.push(pair<int, string>(f.iID, f.strFullName));
+                }
+            }
+        }
+    }
 
     // sent folder
     IMAPFolder fSent;
