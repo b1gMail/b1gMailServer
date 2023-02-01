@@ -1464,8 +1464,13 @@ void IMAP::Copy(char *szLine, bool bUID)
         // search mailbox
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
+        {
             if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            {
                 fFolder = this->cFolders.at(i);
+                break;
+            }
+        }
 
         // check if mailbox exists
         if(!fFolder)

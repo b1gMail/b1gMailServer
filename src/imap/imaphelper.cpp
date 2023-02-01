@@ -666,16 +666,18 @@ IMAPMsgList IMAPHelper::FetchMessages(MySQL_DB *db, int iSelected, int iUserID, 
 
     if (haveBlobStorage)
     {
-        res = db->Query("SELECT flags,fetched,blobstorage,id,datum,size,imapuid FROM bm60_mails LEFT JOIN bm60_bms_imapuid ON bm60_bms_imapuid.mailid=bm60_mails.id WHERE (%s) AND userid='%d' ORDER BY id ASC",
+        res = db->Query("SELECT flags,fetched,blobstorage,id,datum,size,imapuid FROM bm60_mails LEFT JOIN bm60_bms_imapuid ON bm60_bms_imapuid.mailid=bm60_mails.id WHERE (%s) AND userid='%d'",
             folderCond.c_str(),
             iUserID);
     }
     else
     {
-        res = db->Query("SELECT flags,fetched,LENGTH(body),id,datum,size,imapuid FROM bm60_mails LEFT JOIN bm60_bms_imapuid ON bm60_bms_imapuid.mailid=bm60_mails.id WHERE (%s) AND userid='%d' ORDER BY id ASC",
+        res = db->Query("SELECT flags,fetched,LENGTH(body),id,datum,size,imapuid FROM bm60_mails LEFT JOIN bm60_bms_imapuid ON bm60_bms_imapuid.mailid=bm60_mails.id WHERE (%s) AND userid='%d'",
             folderCond.c_str(),
             iUserID);
     }
+
+    vMessages.reserve(res->NumRows());
 
     char **row;
     while((row = res->FetchRow()))

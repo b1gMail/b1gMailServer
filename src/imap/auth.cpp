@@ -285,8 +285,13 @@ void IMAP::Select(char *szLine, bool bEXAMINE)
         // search mailbox
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
+        {
             if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            {
                 fFolder = this->cFolders.at(i);
+                break;
+            }
+        }
 
         if(!fFolder)
         {
@@ -521,8 +526,13 @@ void IMAP::XApplePushService(char *szLine)
 
                 // search mailbox
                 for(int i=0; i<(int)this->cFolders.size(); i++)
+                {
                     if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+                    {
                         folderIDs.push_back(this->cFolders.at(i).iID);
+                        break;
+                    }
+                }
             }
         }
 
@@ -733,8 +743,13 @@ void IMAP::Rename(char *szLine)
         // search mailbox
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
+        {
             if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            {
                 fFolder = this->cFolders.at(i);
+                break;
+            }
+        }
 
         if(!fFolder || fFolder.iID <= 0)
         {
@@ -749,8 +764,13 @@ void IMAP::Rename(char *szLine)
             // exists?
             IMAPFolder fDestFolder;
             for(int i=0; i<(int)this->cFolders.size(); i++)
+            {
                 if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strNewMailboxName.c_str()) == 0)
+                {
                     fDestFolder = this->cFolders.at(i);
+                    break;
+                }
+            }
 
             if(fDestFolder)
             {
@@ -774,8 +794,13 @@ void IMAP::Rename(char *szLine)
 
                     // search ref
                     for(int i=0; i<(int)this->cFolders.size(); i++)
+                    {
                         if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strNewMailboxRef.c_str()) == 0)
+                        {
                             fRefFolder = this->cFolders.at(i);
+                            break;
+                        }
+                    }
 
                     // ref folder exists?
                     if(!fRefFolder || (fFolder.iID != 0 && (fRefFolder.iID == fFolder.iID))
@@ -870,8 +895,13 @@ void IMAP::Status(char *szLine)
         // search mailbox
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
+        {
             if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            {
                 fFolder = this->cFolders.at(i);
+                break;
+            }
+        }
 
         if(!fFolder)
         {
@@ -977,8 +1007,13 @@ void IMAP::Delete(char *szLine)
         // search mailbox
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
+        {
             if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            {
                 fFolder = this->cFolders.at(i);
+                break;
+            }
+        }
 
         // exists?
         if(fFolder
@@ -1045,8 +1080,13 @@ void IMAP::Subscribe(char *szLine, bool bUNSUBSCRIBE)
         // search mailbox
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
+        {
             if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            {
                 fFolder = this->cFolders.at(i);
+                break;
+            }
+        }
 
         // exists?
         if(fFolder)
@@ -1111,8 +1151,13 @@ void IMAP::Create(char *szLine)
         // exists?
         bool bExists = false;
         for(int i=0; i<(int)this->cFolders.size(); i++)
+        {
             if(strcasecmp(strMailboxName.c_str(), this->cFolders.at(i).strFullName.c_str()) == 0)
+            {
                 bExists = true;
+                break;
+            }
+        }
 
         if(bExists)
         {
@@ -1135,8 +1180,13 @@ void IMAP::Create(char *szLine)
 
                 // search parent
                 for(int i=0; i<(int)this->cFolders.size(); i++)
+                {
                     if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strRef.c_str()) == 0)
+                    {
                         fParent = this->cFolders.at(i);
+                        break;
+                    }
+                }
 
                 if(!fParent)
                 {
@@ -1217,7 +1267,7 @@ void IMAP::List(char *szLine, bool bLSUB)
             }
 
             // display matching folders
-            for(int i=0; i<(int)this->cFolders.size(); i++)
+            for(std::size_t i=0; i < this->cFolders.size(); i++)
             {
                 if((IMAPHelper::Match(strSearchPattern.c_str(), this->cFolders.at(i).strFullName.c_str())
                     || (strcasecmp(this->cFolders.at(i).strFullName.c_str(), "INBOX") == 0
