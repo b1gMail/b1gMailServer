@@ -927,7 +927,7 @@ int IMAPHelper::FlagMaskFromList(const char *szList)
     IMAPArgList vFlags = IMAPHelper::ParseList(szList);
 
     int iFlags = 0 | FLAG_UNREAD;
-    for(int i=0; i<(int)vFlags.size(); i++)
+    for(std::size_t i=0; i < vFlags.size(); i++)
     {
         if(strcasecmp(vFlags.at(i).c_str(), "seen") == 0)
             UNFLAG(FLAG_UNREAD, iFlags);
@@ -1048,10 +1048,13 @@ void IMAPHelper::FlagMessage(MySQL_DB *db, int iFlags, int iID, int iUserID, boo
  */
 bool IMAPHelper::InMSGSet(const IMAPRange &r, int iID)
 {
-    for(int i=0; i<(int)r.size(); i++)
+    for(std::size_t i=0; i< r.size(); i++)
+    {
         if((iID >= r.at(i).iFrom) && (iID <= r.at(i).iTo))
+        {
             return true;
-
+        }
+    }
     return false;
 }
 
@@ -1095,44 +1098,6 @@ IMAPRange IMAPHelper::ParseMSGSet(const char *szSet)
     }
 
     return(result);
-}
-
-/*
- * Generate folder flag bitmask
- */
-int IMAPHelper::FlagMask(MySQL_DB *db, int iFolder, int iUserID, int iLimit)
-{
-    int iResult = 0, iMsgFlags ;
-    b1gMailServer::MySQL_Result *res;
-    string folderCond = IMAPHelper::FolderCondition(db, iFolder == -1 ? 0 : iFolder);
-
-    if(iLimit)
-    {
-        res = db->Query("SELECT flags FROM bm60_mails WHERE (%s) AND userid='%d' ORDER BY id DESC LIMIT %d",
-            folderCond.c_str(),
-            iUserID,
-            iLimit);
-    }
-    else
-    {
-        res = db->Query("SELECT flags FROM bm60_mails WHERE (%s) AND userid='%d'",
-            folderCond.c_str(),
-            iUserID);
-    }
-
-    char **row;
-    while((row = res->FetchRow()))
-    {
-        iMsgFlags = atoi(row[0]);
-        FLAG(iMsgFlags, iResult);
-    }
-    delete res;
-
-    db->Log(CMP_IMAP, PRIO_DEBUG, utils->PrintF("[HELPER] Folder flag bitmask of folder [%d] is [%d]",
-        iFolder,
-        iResult));
-
-    return(iResult);
 }
 
 /*
@@ -1181,7 +1146,7 @@ int IMAPHelper::CountFlaggedMails(const IMAPMsgList &vMsgs, int iFlags)
         it != vMsgs.end();
         ++it)
     {
-        if(FLAGGED(iFlags, it->iFlags) || iFlags == -1)
+        if(FLAGGED(iFlags, it->iFlags))
             ++iResult;
     }
 

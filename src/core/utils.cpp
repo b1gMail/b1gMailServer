@@ -706,7 +706,7 @@ bool Utils::IsNumeric(const string &in)
 {
     bool result = true;
 
-    for(unsigned int i=0; i<in.length(); i++)
+    for(std::size_t i=0; i < in.length(); i++)
     {
         char c = in.at(i);
 
@@ -1546,7 +1546,7 @@ char *Utils::PrintF(const char *szFormat, ...)
 
 char *Utils::VPrintF(const char *szFormat, va_list arglist)
 {
-    char szBuff[255], *szResult;
+    char szBuff[255];
     string strQuery;
 
     // prepare query
@@ -1606,10 +1606,7 @@ char *Utils::VPrintF(const char *szFormat, va_list arglist)
     va_end(arglist);
 
     // allocate result string
-    szResult = (char *)mmalloc(strQuery.length()+1);
-    strcpy(szResult, strQuery.c_str());
-
-    return(szResult);
+    return(mstrdup(strQuery.c_str()));
 }
 
 void *Utils::SafeMalloc(size_t iSize)

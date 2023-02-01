@@ -83,7 +83,6 @@ public:
     }
     static int CountFlaggedMails(const IMAPMsgList &vMsgs, int iFlags);
     static int CountNotFlaggedMails(const IMAPMsgList &vMsgs, int iFlags);
-    static int FlagMask(MySQL_DB *db, int iFolder, int iUserID, int iLimit);
     static int GetLastUID(const IMAPMsgList &vMsgs);
     static int FirstUnseen(const IMAPMsgList &vMsgs);
     static IMAPRange ParseMSGSet(const char *szSet);

@@ -928,9 +928,7 @@ void IMAP::Status(char *szLine)
                 printf("* STATUS \"%s\" (",
                     IMAPHelper::Escape(strMailboxName.c_str()).c_str());
 
-                int iAll = IMAPHelper::CountFlaggedMails(vMsgs, -1);
-
-                for(int i=0; i<(int)cList.size(); i++)
+                for(std::size_t i=0; i < cList.size(); i++)
                 {
                     int iResult = -1;
                     const char *szKey = cList.at(i).c_str();
@@ -938,7 +936,7 @@ void IMAP::Status(char *szLine)
                     if(strcasecmp(szKey, "messages") == 0)
                     {
                         // count messages
-                        iResult = iAll;
+                        iResult = static_cast<int>(vMsgs.size());
                         printf("MESSAGES %d",
                             iResult);
                     }
@@ -966,7 +964,7 @@ void IMAP::Status(char *szLine)
                             iResult);
                     }
 
-                    if(i != (int)(cList.size()-1))
+                    if(i != cList.size()-1)
                         printf(" ");
                 }
 
@@ -1271,7 +1269,7 @@ void IMAP::List(char *szLine, bool bLSUB)
             {
                 if((IMAPHelper::Match(strSearchPattern.c_str(), this->cFolders.at(i).strFullName.c_str())
                     || (strcasecmp(this->cFolders.at(i).strFullName.c_str(), "INBOX") == 0
-                    && IMAPHelper::Match(strSearchPattern.c_str(), "INBOX")))
+                        && IMAPHelper::Match(strSearchPattern.c_str(), "INBOX")))
                     && (bLSUB ? this->cFolders.at(i).bSubscribed : true))
                 {
                     string strUTF7 = IMAPHelper::StrEncode(this->cFolders.at(i).strFullName.c_str());
