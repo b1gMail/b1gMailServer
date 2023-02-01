@@ -1263,7 +1263,7 @@ void IMAP::List(char *szLine, bool bLSUB)
             }
             else
             {
-                strSearchPattern = string("^") + strPattern + strRefName + string("$");
+                strSearchPattern = string("^") + strRefName + strPattern + string("$");
             }
 
             // display matching folders
