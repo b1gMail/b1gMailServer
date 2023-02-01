@@ -21,8 +21,6 @@
 #ifndef _IMAP_IMAPHELPER_H
 #define _IMAP_IMAPHELPER_H
 
-#define IMAP_FOLDER_MAXDEPTH            32
-
 #include <core/core.h>
 
 struct IMAPFolder
