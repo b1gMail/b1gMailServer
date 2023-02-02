@@ -336,13 +336,13 @@ int MSGQueue::EnqueueMessage(vector<pair<string, string> > headers,
     {
         if(utils->FileExists(szAlterMimePath))
         {
+            bool bSignatureFound = false;
+
             // copy signature to temp file
             snprintf(szSignatureFileName, 255, "/tmp/bms-signature.sig.%d", iID);
             FILE *fpSignature = fopen(szSignatureFileName, "w");
             if(fpSignature != NULL)
             {
-                bool bSignatureFound = false;
-
                 // plugins
                 FOR_EACH_PLUGIN(Plugin)
                 {
@@ -363,20 +363,19 @@ int MSGQueue::EnqueueMessage(vector<pair<string, string> > headers,
                     {
                         row = res->FetchRow();
 
-                            string strSignature = row[0];
+                        string strSignature = row[0];
 
-                            if(strSignature.length() > 0)
-                            {
-                                size_t rPos;
+                        if(strSignature.length() > 0)
+                        {
+                            size_t rPos;
 
-                                while((rPos = strSignature.find_first_of('\r')) != string::npos)
-                                    strSignature.erase(rPos, 1);
+                            while((rPos = strSignature.find_first_of('\r')) != string::npos)
+                                strSignature.erase(rPos, 1);
 
-                                fprintf(fpSignature, "\n%s\n%s\n", cfg->Get("outbound_signature_sep"), strSignature.c_str());
-                            }
-                            else
-                                fprintf(fpSignature, "\n");
+                            fprintf(fpSignature, "\n%s\n%s\n", cfg->Get("outbound_signature_sep"), strSignature.c_str());
 
+                            bSignatureFound = true;
+                        }
                     }
                     delete res;
                 }
@@ -387,124 +386,146 @@ int MSGQueue::EnqueueMessage(vector<pair<string, string> > headers,
             // success?
             if(utils->FileExists(szSignatureFileName))
             {
-                // prepare command
-                std::size_t buffLength = strlen(szAlterMimePath)+strlen(szSignatureFileName)+255;
-                char *szCommand = new char[buffLength];
-                snprintf(szCommand, buffLength, "%s --input=- --disclaimer=%s --htmltoo",
-                        szAlterMimePath,
-                        szSignatureFileName);
-
-                int fdIn, fdOut;
-                pid_t iPID;
-                if((iPID = utils->POpen(szCommand, &fdIn, &fdOut)) > 0)
+                if(bSignatureFound)
                 {
-                    if(fcntl(fdOut, F_SETFL, fcntl(fdOut, F_GETFL) | O_NONBLOCK) == 0)
+                    // prepare command
+                    std::size_t buffLength = strlen(szAlterMimePath)+strlen(szSignatureFileName)+255;
+                    char *szCommand = new char[buffLength];
+                    snprintf(szCommand, buffLength, "%s --input=- --disclaimer=%s --htmltoo",
+                            szAlterMimePath,
+                            szSignatureFileName);
+
+                    int fdIn, fdOut;
+                    pid_t iPID;
+                    if((iPID = utils->POpen(szCommand, &fdIn, &fdOut)) > 0)
                     {
-                        ssize_t iReadBytes, iWrittenBytes;
-                        FILE *fpNewMessage = tmpfile();
+                        FILE *fpNewMessage = NULL;
 
-                        fd_set fdSet;
-                        while(true)
+                        if(fcntl(fdOut, F_SETFL, fcntl(fdOut, F_GETFL) | O_NONBLOCK) == 0)
                         {
-                            struct timeval timeout;
+                            ssize_t iReadBytes, iWrittenBytes;
+                            fpNewMessage = tmpfile();
 
-                            if(!feof(fpMessage))
+                            fd_set fdSet;
+                            while(true)
                             {
-                                // read from msg file
-                                iReadBytes = fread(szBuffer, 1, QUEUE_BUFFER_SIZE, fpMessage);
-                                if(iReadBytes <= 0)
-                                {
-                                    if(fdIn != -1)
-                                    {
-                                        close(fdIn);
-                                        fdIn = -1;
-                                    }
-                                    if(iReadBytes < 0)
-                                        break;
-                                }
+                                struct timeval timeout;
 
-                                // write to altermime
-                                if(iReadBytes > 0)
+                                if(!feof(fpMessage))
                                 {
-                                    iWrittenBytes = write(fdIn, szBuffer, iReadBytes);
-                                    if(iWrittenBytes <= 0)
+                                    // read from msg file
+                                    iReadBytes = fread(szBuffer, 1, QUEUE_BUFFER_SIZE, fpMessage);
+                                    if(iReadBytes <= 0)
                                     {
                                         if(fdIn != -1)
                                         {
                                             close(fdIn);
                                             fdIn = -1;
                                         }
-                                        break;
+                                        if(iReadBytes < 0)
+                                            break;
                                     }
-                                }
 
-                                // eof?
-                                if(feof(fpMessage))
-                                {
-                                    if(fdIn != -1)
+                                    // write to altermime
+                                    if(iReadBytes > 0)
                                     {
-                                        close(fdIn);
-                                        fdIn = -1;
+                                        iWrittenBytes = write(fdIn, szBuffer, iReadBytes);
+                                        if(iWrittenBytes <= 0)
+                                        {
+                                            if(fdIn != -1)
+                                            {
+                                                close(fdIn);
+                                                fdIn = -1;
+                                            }
+                                            break;
+                                        }
                                     }
+
+                                    // eof?
+                                    if(feof(fpMessage))
+                                    {
+                                        if(fdIn != -1)
+                                        {
+                                            close(fdIn);
+                                            fdIn = -1;
+                                        }
+                                    }
+
+                                    // just poll
+                                    timeout.tv_sec = 0;
+                                    timeout.tv_usec = 0;
+                                }
+                                else
+                                {
+                                    // wait
+                                    timeout.tv_sec = 0;
+                                    timeout.tv_usec = 500000;
                                 }
 
-                                // just poll
-                                timeout.tv_sec = 0;
-                                timeout.tv_usec = 0;
+                                FD_ZERO(&fdSet);
+                                FD_SET(fdOut, &fdSet);
+                                if(select(fdOut+1, &fdSet, NULL, NULL, &timeout) == -1)
+                                    break;
+
+                                if(FD_ISSET(fdOut, &fdSet))
+                                {
+                                    iReadBytes = read(fdOut, szBuffer, QUEUE_BUFFER_SIZE);
+                                    if(iReadBytes <= 0)
+                                        break;
+
+                                    iWrittenBytes = fwrite(szBuffer, 1, iReadBytes, fpNewMessage);
+                                    if(iWrittenBytes <= 0)
+                                        break;
+                                }
+                            }
+
+                            close(fdOut);
+                            fdOut = -1;
+                        }
+
+                        if(fdIn != -1)
+                        {
+                            close(fdIn);
+                            fdIn = -1;
+                        }
+                        if(fdOut != -1)
+                        {
+                            close(fdOut);
+                            fdOut = -1;
+                        }
+
+                        int iAlterMIMEResult;
+                        waitpid(iPID, &iAlterMIMEResult, 0);
+
+                        if(WIFEXITED(iAlterMIMEResult) && WEXITSTATUS(iAlterMIMEResult) == 0)
+                        {
+                            if (fpNewMessage != NULL)
+                            {
+                                fclose(fpMessage);
+                                fpMessage = fpNewMessage;
+                                fseek(fpMessage, 0, SEEK_SET);
                             }
                             else
                             {
-                                // wait
-                                timeout.tv_sec = 0;
-                                timeout.tv_usec = 500000;
-                            }
-
-                            FD_ZERO(&fdSet);
-                            FD_SET(fdOut, &fdSet);
-                            if(select(fdOut+1, &fdSet, NULL, NULL, &timeout) == -1)
-                                break;
-
-                            if(FD_ISSET(fdOut, &fdSet))
-                            {
-                                iReadBytes = read(fdOut, szBuffer, QUEUE_BUFFER_SIZE);
-                                if(iReadBytes <= 0)
-                                    break;
-
-                                iWrittenBytes = fwrite(szBuffer, 1, iReadBytes, fpNewMessage);
-                                if(iWrittenBytes <= 0)
-                                    break;
+                                db->Log(CMP_MSGQUEUE, PRIO_WARNING, utils->PrintF("Cannot add signature to outbound mail - fpNewMessage is NULL"));
                             }
                         }
-
-                        close(fdOut);
-                        fdOut = -1;
-
-                        fclose(fpMessage);
-                        fpMessage = fpNewMessage;
-                        fseek(fpMessage, 0, SEEK_SET);
+                        else
+                        {
+                            db->Log(CMP_MSGQUEUE, PRIO_WARNING, utils->PrintF("Cannot add signature to outbound mail - altermime returned error (%s: %d)",
+                                                                            szAlterMimePath,
+                                                                            WEXITSTATUS(iAlterMIMEResult)));
+                        }
                     }
-
-                    if(fdIn != -1)
+                    else
                     {
-                        close(fdIn);
-                        fdIn = -1;
-                    }
-                    if(fdOut != -1)
-                    {
-                        close(fdOut);
-                        fdOut = -1;
+                        db->Log(CMP_MSGQUEUE, PRIO_WARNING, utils->PrintF("Cannot add signature to outbound mail - failed to invoke altermime (%s)",
+                                                                        szAlterMimePath));
                     }
 
-                    int iAlterMIMEResult;
-                    waitpid(iPID, &iAlterMIMEResult, 0);
-                }
-                else
-                {
-                    db->Log(CMP_MSGQUEUE, PRIO_WARNING, utils->PrintF("Cannot add signature to outbound mail - failed to invoke altermime (%s)",
-                                                                      szAlterMimePath));
+                    delete[] szCommand;
                 }
 
-                delete[] szCommand;
                 unlink(szSignatureFileName);
             }
             else
