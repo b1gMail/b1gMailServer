@@ -208,11 +208,18 @@ int DNS::TXTLookup(const string &domain, vector<string> &out, int type)
             PDNS_TXT_DATA cTXTData = (PDNS_TXT_DATA)&cRecord->Data;
             PSTR *recordStrings = cTXTData->pStringArray;
 
+            string resultEntry;
+
             for(DWORD i=0; i<cTXTData->dwStringCount; i++)
             {
                 if(recordStrings[i] == NULL)
                     continue;
-                out.push_back(string(recordStrings[i]));
+                resultEntry += string(recordStrings[i]);
+            }
+
+            if (!resultEntry.empty())
+            {
+                out.push_back(resultEntry);
             }
         }
 
@@ -568,6 +575,8 @@ bool DNS::ParseTXTAnswer(u_char *buffer, int len, vector<string> &out, int type)
 
         if(rrClass == ns_c_in && rrType == type)
         {
+            string resultEntry;
+
             const u_char *strPtr = ptr;
             while(strPtr < ptr+rrLen)
             {
@@ -578,11 +587,14 @@ bool DNS::ParseTXTAnswer(u_char *buffer, int len, vector<string> &out, int type)
                     break;
                 }
 
-                string resultEntry;
                 resultEntry.append((const char *)strPtr, (size_t)strLen);
-                out.push_back(resultEntry);
 
                 strPtr += strLen;
+            }
+
+            if (!resultEntry.empty())
+            {
+                out.push_back(resultEntry);
             }
         }
 
