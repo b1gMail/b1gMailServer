@@ -28,7 +28,7 @@ RUN cd pcre-8.45 && ./configure --prefix=/buildenv --enable-shared --disable-sta
 
 COPY ./src /src/b1gmailserver
 WORKDIR /src/b1gmailserver/build
-RUN cmake -DCMAKE_INSTALL_PREFIX=/buildenv .. && make -j && make dist
+RUN cmake -DCMAKE_INSTALL_PREFIX=/buildenv -DCMAKE_BUILD_TYPE=Release .. && make -j && make dist
 
 FROM scratch AS export-stage
 COPY --from=build-stage /src/b1gmailserver/build/dist/*.run /
