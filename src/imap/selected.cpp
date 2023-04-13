@@ -1454,7 +1454,7 @@ void IMAP::Copy(char *szLine, bool bUID)
         string strMessageSet = cArgs.at(2);
         string strMailboxName = IMAPHelper::StrDecode(cArgs.at(3).c_str());
 
-        IMAPRange cRange;
+        IMAPRange cRange = IMAPHelper::ParseMSGSet(strMessageSet);
 
         if(strMailboxName.size() > 0 && strMailboxName[strMailboxName.size()-1] == '/')
         {
