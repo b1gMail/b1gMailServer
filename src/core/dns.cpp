@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <sstream>
 
-#define DNS_BUFFERSIZE      1024
+#define DNS_BUFFERSIZE      4096
 #define DNS_HFIXEDSZ        12
 #define DNS_QFIXEDSZ        4
 #define DNS_RRFIXEDSZ       10
@@ -455,7 +455,7 @@ int DNS::MXLookup(const string &domain, vector<MXServer> &out, bool implicit, bo
 bool DNS::ParseMXAnswer(u_char *buffer, int len, vector<MXServer> &out, bool useDNSSEC)
 {
     bool result = true;
-    char tmpBuffer[1024];
+    char tmpBuffer[DNS_BUFFERSIZE];
 
     if(len < DNS_HFIXEDSZ)
         return(false);
@@ -531,7 +531,7 @@ bool DNS::ParseMXAnswer(u_char *buffer, int len, vector<MXServer> &out, bool use
 bool DNS::ParseTXTAnswer(u_char *buffer, int len, vector<string> &out, int type)
 {
     bool result = true;
-    char tmpBuffer[1024];
+    char tmpBuffer[DNS_BUFFERSIZE];
 
     if(len < DNS_HFIXEDSZ)
         return(false);
@@ -685,7 +685,7 @@ int DNS::PTRLookup(const string &ip, vector<string> &out)
 bool DNS::ParsePTRAnswer(u_char *buffer, int len, vector<string> &out)
 {
     bool result = true;
-    char tmpBuffer[1024];
+    char tmpBuffer[DNS_BUFFERSIZE];
 
     if(len < DNS_HFIXEDSZ)
         return(false);
@@ -790,7 +790,7 @@ int DNS::TLSALookup(const string &domain, unsigned short port, vector<TLSARecord
 bool DNS::ParseTLSAAnswer(u_char *buffer, int len, vector<TLSARecord> &out)
 {
     bool result = true;
-    char tmpBuffer[1024];
+    char tmpBuffer[DNS_BUFFERSIZE];
 
     if(len < DNS_HFIXEDSZ)
         return(false);
