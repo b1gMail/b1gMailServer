@@ -130,6 +130,10 @@ struct IMAPFetchItem
 
     IMAPFetchItem()
         : tItem(FETCH_INVALID)
+        , tSection(SECTION_EMPTY)
+        , iPartStart(0)
+        , iPartLength(0)
+        , bPeek(false)
     {}
 
     operator bool() const

@@ -1767,7 +1767,7 @@ void IMAP::Store(char *szLine, bool bUID)
                         this->iUserID);
                     bDone = true;
 
-                    if(strDataItem.at(6) != '.')
+                    if(strDataItem.size() >= 7 && strDataItem.at(6) != '.')
                     {
                         printf("* %d FETCH (FLAGS (",
                             this->vMessages.at(i).iSequenceID);
