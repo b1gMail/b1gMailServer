@@ -1,6 +1,6 @@
 /*
  * b1gMailServer
- * Copyright (c) 2002-2022
+ * Copyright (c) 2002-2024
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -46,6 +46,7 @@ void SMTP::Data()
     this->bDataPassedHeaders = false;
     this->bWriteMessageIDHeader = this->bAuthenticated || this->iPeerOrigin == SMTP_PEER_ORIGIN_TRUSTED;
     this->bWriteDateHeader = this->bAuthenticated || this->iPeerOrigin == SMTP_PEER_ORIGIN_TRUSTED;
+    this->bPrevLineEndsWithCrLf = false;
     this->iHeaderBytes = 0;
     this->strBody.clear();
     this->vHeaders.clear();
@@ -431,9 +432,8 @@ void SMTP::ProcessMessage()
 bool SMTP::ProcessDataLine(char *szLine)
 {
     // termination line?
-    if(strcmp(szLine, ".") == 0
-        || strcmp(szLine, ".\r\n") == 0
-        || strcmp(szLine, ".\n") == 0)
+    if(strcmp(szLine, ".\r\n") == 0
+        && bPrevLineEndsWithCrLf)
     {
         // process message!
         this->ProcessMessage();

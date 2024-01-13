@@ -129,6 +129,7 @@ private:
     bool bSizeLimitExceeded;
     bool bWriteMessageIDHeader;
     bool bWriteDateHeader;
+    bool bPrevLineEndsWithCrLf;
     bool bDataPassedHeaders;
     bool bValidFromHeader;
     eSenderCheckMode iSenderCheckMode;
