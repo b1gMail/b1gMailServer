@@ -1,6 +1,6 @@
 /*
  * b1gMailServer
- * Copyright (c) 2002-2022
+ * Copyright (c) 2002-2024
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -1203,7 +1203,11 @@ bool SMTP::ProcessLine(char *szLine)
         db->Log(CMP_SMTP, PRIO_DEBUG, utils->PrintF("[%s] Data: %s",
                                                     this->strPeer.c_str(),
                                                     szLine));
+        bool thisLineEndsWithCrlf = strlen(szLine) >= 2
+            && szLine[strlen(szLine)-2] == '\r'
+            && szLine[strlen(szLine)-1] == '\n';
         this->ProcessDataLine(szLine);
+        bPrevLineEndsWithCrLf = thisLineEndsWithCrlf;
         return(true);
     }
 
