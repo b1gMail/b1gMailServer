@@ -64,9 +64,6 @@ void IMAP::Append(char *szLine)
         if(iInternalDate == 0)
             iInternalDate = time(NULL);
 
-        if(strDate.size() == 0)
-            return;
-
         if(strMailboxName.size() > 0 && strMailboxName[strMailboxName.size()-1] == '/')
         {
             strMailboxName.erase(strMailboxName.size()-1);
