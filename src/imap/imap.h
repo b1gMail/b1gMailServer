@@ -163,8 +163,8 @@ typedef vector<IMAPMsg>                         IMAPMsgList;
 typedef vector<IMAPFetchItem>                       IMAPFetchList;
 #define HVAL(x,y)                                   cMail.GetHeader(x) == NULL ? y : cMail.GetHeader(x)
 #define START(x)                                    x+iPartStart
-#define SAFESTART(x)                                if((iPartStart-1) > (int)x) iPartStart = (int)x-1;
-#define DETLEN(x)                                   (cItem.iPartLength == -1 ? (int)x : (cItem.iPartLength > (int)x-iPartStart) ? (int)x-iPartStart : cItem.iPartLength)
+#define SAFESTART(x)                                if(iPartStart >= (int)x) iPartStart = (int)x;
+#define DETLEN(x)                                   (cItem.iPartLength == -1 ? ((int)x - iPartStart) : (cItem.iPartLength >= (int)x-iPartStart) ? (int)x-iPartStart : cItem.iPartLength)
 #define FLICKFLAG(szDataItem, flag, iNewFlags)      (*szDataItem == '+') ? (!FLAGGED(flag, iNewFlags) ? (iNewFlags |= flag) : false) : (FLAGGED(flag, iNewFlags) ? (iNewFlags &= ~(flag)) : false)
 #define UNFLICKFLAG(szDataItem, flag, iNewFlags)    (*szDataItem == '+') ? (FLAGGED(flag, iNewFlags) ? (iNewFlags &= ~(flag)) : false) : (!FLAGGED(flag, iNewFlags) ? (iNewFlags |= flag) : false)
 #define IMAP_MAXLINE                                8192    // rfc 2683
