@@ -390,7 +390,7 @@ void IMAP::Search(char *szLine, bool bUID)
                     }
                     else
                     {
-                        printf("* Internal error\r\n");
+                        printf("* NO Internal error while fetching message\r\n");
                         db->Log(CMP_IMAP, PRIO_WARNING, utils->PrintF("[%s] Cannot open message %d",
                             this->strPeer.c_str(),
                             atoi(row[0])));
@@ -1010,7 +1010,7 @@ void IMAP::Fetch(char *szLine, bool bUID)
                     }
                     else
                     {
-                        printf("* Internal error\r\n");
+                        printf("* NO Internal error while fetching message\r\n");
                         db->Log(CMP_IMAP, PRIO_WARNING, utils->PrintF("[%s] Cannot open message %d",
                             this->strPeer.c_str(),
                             cMessage.iMailID));
