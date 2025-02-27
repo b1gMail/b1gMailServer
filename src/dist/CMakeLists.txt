@@ -87,13 +87,13 @@ add_custom_command(
 add_custom_command(
   TARGET        ${NAME}-copy
   COMMAND       ${CMAKE_COMMAND} -E copy
-    /buildenv/lib/libssl.so.*.*
+    /buildenv/lib/libssl.so.*
     ${CMAKE_CURRENT_BINARY_DIR}/package/libs/
 )
 add_custom_command(
   TARGET        ${NAME}-copy
   COMMAND       ${CMAKE_COMMAND} -E copy
-    /buildenv/lib/libcrypto.so.*.*
+    /buildenv/lib/libcrypto.so.*
     ${CMAKE_CURRENT_BINARY_DIR}/package/libs/
 )
 add_dependencies(${NAME}-copy b1gmailserver bms-queue setup)

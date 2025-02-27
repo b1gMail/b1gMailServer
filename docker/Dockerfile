@@ -1,26 +1,27 @@
-FROM ubuntu:xenial AS build-stage
+FROM ubuntu:jammy AS build-stage
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
   apt-get install -y build-essential git cmake autoconf libtool pkg-config \
-  zlib1g-dev libncurses5-dev php7.0-cli wget
+  zlib1g-dev libncurses5-dev php-cli wget
 
 RUN mkdir -p /buildenv/include
 
 WORKDIR /src/buildenv
 
-RUN wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
-RUN tar xzf openssl-1.1.1w.tar.gz
-RUN cd openssl-1.1.1w && ./config --prefix=/buildenv shared && make -j && make install && cd ..
+RUN wget https://github.com/openssl/openssl/releases/download/openssl-3.4.1/openssl-3.4.1.tar.gz
+RUN tar xzf openssl-3.4.1.tar.gz
+RUN cd openssl-3.4.1 && ./config --prefix=/buildenv --openssldir=/buildenv --libdir=lib shared && make -j && make install && cd ..
+RUN cd /buildenv && ln -s lib64 lib && cd ..
 
 RUN wget https://invisible-mirror.net/archives/dialog/dialog-1.3-20160828.tgz
 RUN tar xzf dialog-1.3-20160828.tgz
 RUN cd dialog-1.3-20160828 && ./configure --disable-widec --prefix=/buildenv && make -j && make install && cp dlg_config.h dialog.h /buildenv/include && cd ..
 
-RUN wget https://dlm.mariadb.com/3677127/Connectors/c/connector-c-3.3.8/mariadb-connector-c-3.3.8-src.tar.gz
-RUN tar xzf mariadb-connector-c-3.3.8-src.tar.gz
-RUN cd mariadb-connector-c-3.3.8-src && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/buildenv .. && make -j && make install && cd ..
+RUN wget https://dlm.mariadb.com/4047871/Connectors/c/connector-c-3.4.4/mariadb-connector-c-3.4.4-src.tar.gz
+RUN tar xzf mariadb-connector-c-3.4.4-src.tar.gz
+RUN cd mariadb-connector-c-3.4.4-src && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/buildenv .. && make -j && make install && cd ..
 
 RUN wget http://ftp.cs.stanford.edu/pub/exim/pcre/pcre-8.45.tar.gz
 RUN tar xzf pcre-8.45.tar.gz
