@@ -12,8 +12,7 @@ WORKDIR /src/buildenv
 
 RUN wget https://github.com/openssl/openssl/releases/download/openssl-3.4.1/openssl-3.4.1.tar.gz
 RUN tar xzf openssl-3.4.1.tar.gz
-RUN cd openssl-3.4.1 && ./config --prefix=/buildenv --openssldir=/buildenv --libdir=lib shared && make -j && make install && cd ..
-RUN cd /buildenv && ln -s lib64 lib && cd ..
+RUN cd openssl-3.4.1 && ./config --prefix=/buildenv --openssldir=/buildenv/usr/ssl --libdir=lib shared && make -j && make -j install && cd ..
 
 RUN wget https://invisible-mirror.net/archives/dialog/dialog-1.3-20160828.tgz
 RUN tar xzf dialog-1.3-20160828.tgz
@@ -21,7 +20,7 @@ RUN cd dialog-1.3-20160828 && ./configure --disable-widec --prefix=/buildenv && 
 
 RUN wget https://dlm.mariadb.com/4047871/Connectors/c/connector-c-3.4.4/mariadb-connector-c-3.4.4-src.tar.gz
 RUN tar xzf mariadb-connector-c-3.4.4-src.tar.gz
-RUN cd mariadb-connector-c-3.4.4-src && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/buildenv .. && make -j && make install && cd ..
+RUN cd mariadb-connector-c-3.4.4-src && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/buildenv -DOPENSSL_ROOT_DIR=/buildenv .. && make -j && make install && cd ..
 
 RUN wget http://ftp.cs.stanford.edu/pub/exim/pcre/pcre-8.45.tar.gz
 RUN tar xzf pcre-8.45.tar.gz
@@ -29,7 +28,7 @@ RUN cd pcre-8.45 && ./configure --prefix=/buildenv --enable-shared --disable-sta
 
 COPY ./src /src/b1gmailserver
 WORKDIR /src/b1gmailserver/build
-RUN cmake -DCMAKE_INSTALL_PREFIX=/buildenv -DCMAKE_BUILD_TYPE=Release .. && make -j && make dist
+RUN cmake -DCMAKE_INSTALL_PREFIX=/buildenv -DOPENSSL_ROOT_DIR=/buildenv -DCMAKE_BUILD_TYPE=Release .. && make -j && make dist
 
 FROM scratch AS export-stage
 COPY --from=build-stage /src/b1gmailserver/build/dist/*.run /
