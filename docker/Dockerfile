@@ -12,7 +12,7 @@ WORKDIR /src/buildenv
 
 RUN wget https://github.com/openssl/openssl/releases/download/openssl-3.4.1/openssl-3.4.1.tar.gz
 RUN tar xzf openssl-3.4.1.tar.gz
-RUN cd openssl-3.4.1 && ./config --prefix=/buildenv --openssldir=/buildenv/usr/ssl --libdir=lib shared && make -j && make -j install && cd ..
+RUN cd openssl-3.4.1 && ./config --prefix=/buildenv --openssldir=/buildenv/usr/ssl --libdir=lib no-tests shared && make -j && make -j install && cd ..
 
 RUN wget https://invisible-mirror.net/archives/dialog/dialog-1.3-20160828.tgz
 RUN tar xzf dialog-1.3-20160828.tgz
