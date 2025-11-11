@@ -1049,10 +1049,7 @@ void SMTP::Rcpt(char *szLine)
             {
                 unsigned long long userSize = 0, userQuota = 0;
 
-                sscanf(row[0], "%llu", &userSize);
-                sscanf(row[1], "%llu", &userQuota);
-
-                if(userQuota > 0 && userSize > 0)
+                if(sscanf(row[0], "%llu", &userSize) == 1 && sscanf(row[1], "%llu", &userQuota) == 1)
                 {
                     if(userSize+MAILBOX_MIN_QUOTA > userQuota)
                     {
