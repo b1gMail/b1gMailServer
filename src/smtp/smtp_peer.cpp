@@ -39,7 +39,7 @@ bool doesHostentMatchIPs(Core::Utils *utils, struct hostent *hostent, const std:
     std::vector<std::string> ips;
     utils->Explode(matchIPs, ips, ',');
 
-    for(const auto &item : ips)
+    for(const std::string &item : ips)
     {
         std::string matchIP = utils->Trim(item);
 
@@ -51,7 +51,7 @@ bool doesHostentMatchIPs(Core::Utils *utils, struct hostent *hostent, const std:
             continue;
         }
 
-        for(std::size_t ipIndex = 0; hostentIPs[ipIndex] != nullptr; ++ipIndex)
+        for(std::size_t ipIndex = 0; hostentIPs[ipIndex] != NULL; ++ipIndex)
         {
             struct in_addr *hostentIP = hostentIPs[ipIndex];
 
@@ -66,8 +66,8 @@ bool doesHostentMatchIPs(Core::Utils *utils, struct hostent *hostent, const std:
                 std::size_t dashPos = ipPartStr.find('-');
                 if(dashPos != std::string::npos)
                 {
-                    unsigned long ipPartFrom = std::stoull(ipPartStr.substr(0, dashPos));
-                    unsigned long ipPartTo = std::stoull(ipPartStr.substr(dashPos + 1));
+                    unsigned long ipPartFrom = strtoul(ipPartStr.substr(0, dashPos).c_str(), NULL, 10);
+                    unsigned long ipPartTo = strtoul(ipPartStr.substr(dashPos + 1).c_str(), NULL, 10);
 
                     if(ipPartTo < ipPartFrom || ipPartFrom > 255 || ipPartTo > 255
                         || hostentIPPart < static_cast<uint8_t>(ipPartFrom)
@@ -79,7 +79,7 @@ bool doesHostentMatchIPs(Core::Utils *utils, struct hostent *hostent, const std:
                 }
                 else
                 {
-                    unsigned long ipPart = std::stoul(ipPartStr);
+                    unsigned long ipPart = strtoul(ipPartStr.c_str(), NULL, 0);
 
                     if(ipPart > 255)
                     {
@@ -212,7 +212,7 @@ void SMTP::ClassifyPeer()
                 strLookup.append(".");
 
             struct hostent *lookupResult = gethostbyname(strLookup.c_str());
-            if(lookupResult != nullptr)
+            if(lookupResult != NULL)
             {
                 string strMatchIPs = bHaveMatchIPs ? utils->Trim(std::string(row[3])) : "";
                 if (doesHostentMatchIPs(utils, lookupResult, strMatchIPs))
