@@ -199,11 +199,24 @@ void Config::ReadDBConfig()
     }
     delete res;
 
+    bool bHaveDNSBLMatchIPsField = false;
+    res = db->Query("SHOW FIELDS FROM `bm60_bms_dnsbl`");
+    while((row = res->FetchRow()))
+    {
+        if(strcmp(row[0], "match_ips") == 0)
+        {
+            bHaveDNSBLMatchIPsField = true;
+            break;
+        }
+    }
+    delete res;
+
     this->items["enable_ap"] = bHaveAPTable ? "1" : "0";
     this->items["enable_mdstatus"] = bHaveMDStatusTable ? "1" : "0";
     this->items["enable_blobstorage"] = bHaveBlobStorage ? "1" : "0";
     this->items["enable_sendstats"] = bHaveSendStats ? "1" : "0";
     this->items["enable_aliaslogin"] = bHaveAliasLoginField ? "1" : "0";
+    this->items["enable_dnsbl_matchips"] = bHaveDNSBLMatchIPsField ? "1" : "0";
 }
 
 void Config::Dump()
