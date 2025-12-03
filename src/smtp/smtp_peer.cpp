@@ -1,6 +1,6 @@
 /*
  * b1gMailServer
- * Copyright (c) 2002-2022
+ * Copyright (c) 2002-2025
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,6 +19,99 @@
  */
 
 #include <smtp/smtp.h>
+
+namespace {
+
+bool doesHostentMatchIPs(Core::Utils *utils, struct hostent *hostent, const std::string &matchIPs)
+{
+    if(hostent == NULL)
+    {
+        return false;
+    }
+
+    if(matchIPs.empty())
+    {
+        return true;
+    }
+
+    if(hostent->h_addrtype != AF_INET)
+    {
+        return false;
+    }
+
+    struct in_addr **hostentIPs = reinterpret_cast<struct in_addr **>(hostent->h_addr_list);
+
+    std::vector<std::string> ips;
+    utils->Explode(matchIPs, ips, ',');
+
+    for(std::vector<std::string>::iterator it = ips.begin(); it != ips.end(); ++it)
+    {
+        std::string item = *it;
+        std::string matchIP = utils->Trim(item);
+
+        std::vector<std::string> ipParts;
+        utils->Explode(matchIP, ipParts, '.');
+
+        if(ipParts.size() != 4)
+        {
+            continue;
+        }
+
+        for(std::size_t ipIndex = 0; hostentIPs[ipIndex] != NULL; ++ipIndex)
+        {
+            struct in_addr *hostentIP = hostentIPs[ipIndex];
+
+            bool doesMatch = true;
+            for(std::size_t i = 0; i < 4; ++i)
+            {
+                std::string ipPartStr = utils->Trim(ipParts[i]);
+                ipPartStr = utils->Trim(ipPartStr, "[]");
+
+                uint8_t hostentIPPart = (reinterpret_cast<uint8_t *>(hostentIP))[i];
+
+                std::size_t dashPos = ipPartStr.find('-');
+                if(dashPos != std::string::npos)
+                {
+                    unsigned long ipPartFrom = strtoul(ipPartStr.substr(0, dashPos).c_str(), NULL, 10);
+                    unsigned long ipPartTo = strtoul(ipPartStr.substr(dashPos + 1).c_str(), NULL, 10);
+
+                    if(ipPartTo < ipPartFrom || ipPartFrom > 255 || ipPartTo > 255
+                        || hostentIPPart < static_cast<uint8_t>(ipPartFrom)
+                        || hostentIPPart > static_cast<uint8_t>(ipPartTo))
+                    {
+                        doesMatch = false;
+                        break;
+                    }
+                }
+                else
+                {
+                    unsigned long ipPart = strtoul(ipPartStr.c_str(), NULL, 0);
+
+                    if(ipPart > 255)
+                    {
+                        doesMatch = false;
+                        break;
+                    }
+
+                    if(hostentIPPart != static_cast<uint8_t>(ipPart))
+                    {
+                        doesMatch = false;
+                        break;
+                    }
+                }
+            }
+
+            if(doesMatch)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+} // anon ns
 
 /*
  * classify peer
@@ -111,7 +204,10 @@ void SMTP::ClassifyPeer()
         string reversedIP = peerAddr.toReversedString();
 
         // check against DNSBLs
-        res = db->Query("SELECT `host`,`classification`,`type` FROM bm60_bms_dnsbl WHERE `type` IN('ipv4','both') ORDER BY `pos`,`host`");
+        bool bHaveMatchIPs = strcmp(cfg->Get("enable_dnsbl_matchips"), "1") == 0;
+        res = db->Query(bHaveMatchIPs
+            ? "SELECT `host`,`classification`,`type`,`match_ips` FROM bm60_bms_dnsbl WHERE `type` IN('ipv4','both') ORDER BY `pos`,`host`"
+            : "SELECT `host`,`classification`,`type` FROM bm60_bms_dnsbl WHERE `type` IN('ipv4','both') ORDER BY `pos`,`host`");
         while((row = res->FetchRow()))
         {
             string strLookup = reversedIP;
@@ -121,16 +217,21 @@ void SMTP::ClassifyPeer()
             if(row[0][strlen(row[0])-1] != '.')
                 strLookup.append(".");
 
-            if(gethostbyname(strLookup.c_str()) != NULL)
+            struct hostent *lookupResult = gethostbyname(strLookup.c_str());
+            if(lookupResult != NULL)
             {
-                int iClassification = atoi(row[1]);
+                string strMatchIPs = bHaveMatchIPs ? utils->Trim(std::string(row[3])) : "";
+                if (doesHostentMatchIPs(utils, lookupResult, strMatchIPs))
+                {
+                    int iClassification = atoi(row[1]);
 
-                db->Log(CMP_SMTP, PRIO_DEBUG, utils->PrintF("[%s] Peer classified as %d by IPv4 dnsbl server %s",
-                    this->strPeer.c_str(),
-                    iClassification,
-                    row[0]));
-                this->iPeerOrigin = iClassification;
-                break;
+                    db->Log(CMP_SMTP, PRIO_DEBUG, utils->PrintF("[%s] Peer classified as %d by IPv4 dnsbl server %s",
+                        this->strPeer.c_str(),
+                        iClassification,
+                        row[0]));
+                    this->iPeerOrigin = iClassification;
+                    break;
+                }
             }
         }
         delete res;
