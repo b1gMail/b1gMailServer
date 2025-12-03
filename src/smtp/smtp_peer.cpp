@@ -24,6 +24,11 @@ namespace {
 
 bool doesHostentMatchIPs(Core::Utils *utils, struct hostent *hostent, const std::string &matchIPs)
 {
+    if(hostent == NULL)
+    {
+        return false;
+    }
+
     if(matchIPs.empty())
     {
         return true;
@@ -39,8 +44,9 @@ bool doesHostentMatchIPs(Core::Utils *utils, struct hostent *hostent, const std:
     std::vector<std::string> ips;
     utils->Explode(matchIPs, ips, ',');
 
-    for(const std::string &item : ips)
+    for(std::vector<std::string>::iterator it = ips.begin(); it != ips.end(); ++it)
     {
+        std::string item = *it;
         std::string matchIP = utils->Trim(item);
 
         std::vector<std::string> ipParts;
