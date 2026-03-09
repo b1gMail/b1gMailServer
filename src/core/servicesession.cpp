@@ -275,6 +275,10 @@ int ServiceSession::vprintf(const char *str, va_list list)
 #ifndef WIN32
         char *szSSLString = NULL;
         result = vasprintf(&szSSLString, str, list);
+        if (result < 0)
+        {
+            return result;
+        }
 #else
         int result = _vscprintf(str, list);
         char *szSSLString = (char *)malloc(result+1);

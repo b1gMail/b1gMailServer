@@ -96,8 +96,6 @@ cl.exe %CLPARAMS% /Foobj\mysql_result.obj 		/c core/mysql_result.cpp
 if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\utils.obj 			/c core/utils.cpp
 if ERRORLEVEL 1 exit /B 1
-cl.exe %CLPARAMS% /Foobj\tls_dh.obj 			/c core/tls_dh.cpp
-if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\socket.obj 			/c core/socket.cpp
 if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\process.obj                    /c core/process.cpp

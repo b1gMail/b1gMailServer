@@ -285,9 +285,6 @@ namespace Core
         // get SHA256 hash over cert in DER format
         string CertHash();
 
-        // set TLS DH params
-        void SetTLSDHParams(SSL_CTX *ssl_ctx, const char *dhPath);
-
         // get core features bitmask
         int GetCoreFeatures();
 
