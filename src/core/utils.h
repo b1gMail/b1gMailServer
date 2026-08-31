@@ -172,6 +172,14 @@ namespace Core
         // md5
         string MD5(const string &input);
 
+        // password hashing (b1gMail-compatible: legacy MD5 + bcrypt + argon2id)
+        bool PasswordIsModern(const string &hash);
+        bool LooksLikeMD5Hash(const string &in);
+        bool VerifyModernPassword(const string &passwordPlain, const string &storedHash);
+        bool VerifyUserPassword(const string &passwordPlain, const string &storedHash, const string &salt);
+        bool PasswordNeedsUpgrade(const string &storedHash);
+        void UpgradeUserPasswordIfNeeded(int userID, const string &passwordPlain, const string &storedHash);
+
         // parse IMAP AUTHENTICATE PLAIN token
         void ParseIMAPAuthPlain(const string &input, string &user, string &password);
 

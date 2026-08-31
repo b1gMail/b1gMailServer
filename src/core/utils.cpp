@@ -29,6 +29,7 @@
 
 #ifndef WIN32
 #include <resolv.h>
+#include <sys/prctl.h>
 #endif
 
 #ifdef WIN32
@@ -2387,8 +2388,16 @@ pid_t Utils::POpen(const char *command, int *infp, int *outfp)
         close(p_stdin[PIPE_READ]);
         close(p_stdout[PIPE_WRITE]);
 
+        // Own process group so sh + php pipe children can be stopped together.
+        setpgid(0, 0);
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+
         execl("/bin/sh", "sh", "-c", command, NULL);
         _exit(127);
+    }
+    else
+    {
+        setpgid(pid, pid);
     }
 
     if(infp == NULL)

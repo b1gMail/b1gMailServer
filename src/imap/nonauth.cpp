@@ -49,32 +49,30 @@ void IMAP::Login(char *szLine)
         strUser = vArgs.at(2);
         strPass = vArgs.at(3);
 
-        // check user+pw
+        // check user+pw (legacy MD5 + modern bcrypt, like b1gMail webmail)
         bool bWebLoginIssue = false;
         int iLastLogin = 0;
         int iAlias = utils->GetAlias(strUser.c_str());
+        bool bSaltedPasswords = strcmp(cfg->Get("salted_passwords"), "1") == 0;
         MySQL_Result *res = NULL;
-        if(strcmp(cfg->Get("salted_passwords"), "1") == 0)
+        if(bSaltedPasswords)
         {
             if(strcmp(cfg->Get("user_space_add"), "1") == 0)
             {
-                res = db->Query("SELECT bm60_users.id,bm60_users.email,(bm60_gruppen.storage+bm60_users.mailspace_add) AS storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE (bm60_users.passwort=MD5(CONCAT(MD5('%q'),bm60_users.passwort_salt))) AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_users.email='%q' OR bm60_users.id='%d')",
-                    strPass.c_str(),
+                res = db->Query("SELECT bm60_users.id,bm60_users.email,(bm60_gruppen.storage+bm60_users.mailspace_add) AS storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin`,bm60_users.`passwort`,bm60_users.`passwort_salt` FROM bm60_users,bm60_gruppen WHERE (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_users.email='%q' OR bm60_users.id='%d')",
                     strUser.c_str(),
                     iAlias);
             }
             else
             {
-                res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE (bm60_users.passwort=MD5(CONCAT(MD5('%q'),bm60_users.passwort_salt))) AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_users.email='%q' OR bm60_users.id='%d')",
-                    strPass.c_str(),
+                res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin`,bm60_users.`passwort`,bm60_users.`passwort_salt` FROM bm60_users,bm60_gruppen WHERE (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_users.email='%q' OR bm60_users.id='%d')",
                     strUser.c_str(),
                     iAlias);
             }
         }
         else
         {
-            res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE (bm60_users.passwort=MD5('%q')) AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_users.email='%q' OR bm60_users.id='%d')",
-                strPass.c_str(),
+            res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin`,bm60_users.`passwort` FROM bm60_users,bm60_gruppen WHERE (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_users.email='%q' OR bm60_users.id='%d')",
                 strUser.c_str(),
                 iAlias);
         }
@@ -82,6 +80,11 @@ void IMAP::Login(char *szLine)
         bool bOk = false;
         while((row = res->FetchRow()))
         {
+            string strStoredHash = row[6];
+            string strSalt = bSaltedPasswords ? row[7] : "";
+            if(!utils->VerifyUserPassword(strPass, strStoredHash, strSalt))
+                continue;
+
             iLastLogin = atoi(row[5]);
 
             int iWebLoginInterval = atoi(utils->GetGroupOption(atoi(row[0]), "weblogin_interval", "0").c_str());
@@ -106,6 +109,8 @@ void IMAP::Login(char *szLine)
                 sscanf(row[2], "%llu", &this->iSizeLimit);
                 this->iUserID = atoi(row[0]);
                 this->strUser = row[1];
+
+                utils->UpgradeUserPasswordIfNeeded(this->iUserID, strPass, strStoredHash);
 
                 if(atoi(cfg->Get("user_choseimaplimit")) == 1)
                     this->iLimit = atoi(utils->GetUserPref(this->iUserID, "imapLimit", cfg->Get("imap_limit")).c_str());
@@ -258,32 +263,30 @@ void IMAP::Authenticate(char *szLine)
             }
         }
 
-        // check them
+        // check them (legacy MD5 + modern bcrypt, like b1gMail webmail)
         bool bWebLoginIssue = false;
         int iLastLogin = 0;
         int iAlias = utils->GetAlias(strUser.c_str());
+        bool bSaltedPasswords = strcmp(cfg->Get("salted_passwords"), "1") == 0;
         MySQL_Result *res = NULL;
-        if(strcmp(cfg->Get("salted_passwords"), "1") == 0)
+        if(bSaltedPasswords)
         {
             if(strcmp(cfg->Get("user_space_add"), "1") == 0)
             {
-                res = db->Query("SELECT bm60_users.id,bm60_users.email,(bm60_gruppen.storage+bm60_users.mailspace_add) AS storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE (bm60_users.passwort=MD5(CONCAT(MD5('%q'),bm60_users.passwort_salt))) AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.email='%q' OR bm60_users.id='%d')",
-                    strPassword.c_str(),
+                res = db->Query("SELECT bm60_users.id,bm60_users.email,(bm60_gruppen.storage+bm60_users.mailspace_add) AS storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin`,bm60_users.`passwort`,bm60_users.`passwort_salt` FROM bm60_users,bm60_gruppen WHERE (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.email='%q' OR bm60_users.id='%d')",
                     strUser.c_str(),
                     iAlias);
             }
             else
             {
-                res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE (bm60_users.passwort=MD5(CONCAT(MD5('%q'),bm60_users.passwort_salt))) AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.email='%q' OR bm60_users.id='%d')",
-                    strPassword.c_str(),
+                res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin`,bm60_users.`passwort`,bm60_users.`passwort_salt` FROM bm60_users,bm60_gruppen WHERE (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.email='%q' OR bm60_users.id='%d')",
                     strUser.c_str(),
                     iAlias);
             }
         }
         else
         {
-            res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE (bm60_users.passwort=MD5('%q')) AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.email='%q' OR bm60_users.id='%d')",
-                strPassword.c_str(),
+            res = db->Query("SELECT bm60_users.id,bm60_users.email,bm60_gruppen.storage,bm60_users.mailbox_generation,bm60_users.mailbox_structure_generation,bm60_users.`lastlogin`,bm60_users.`passwort` FROM bm60_users,bm60_gruppen WHERE (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND (bm60_gruppen.id=bm60_users.gruppe) AND bm60_gruppen.imap='yes' AND (bm60_users.email='%q' OR bm60_users.id='%d')",
                 strUser.c_str(),
                 iAlias);
         }
@@ -292,6 +295,11 @@ void IMAP::Authenticate(char *szLine)
         bool bOk = false;
         while((row = res->FetchRow()))
         {
+            string strStoredHash = row[6];
+            string strSalt = bSaltedPasswords ? row[7] : "";
+            if(!utils->VerifyUserPassword(strPassword, strStoredHash, strSalt))
+                continue;
+
             iLastLogin = atoi(row[5]);
 
             int iWebLoginInterval = atoi(utils->GetGroupOption(atoi(row[0]), "weblogin_interval", "0").c_str());
@@ -316,6 +324,8 @@ void IMAP::Authenticate(char *szLine)
                 sscanf(row[2], "%llu", &this->iSizeLimit);
                 this->iUserID = atoi(row[0]);
                 this->strUser = row[1];
+
+                utils->UpgradeUserPasswordIfNeeded(this->iUserID, strPassword, strStoredHash);
 
                 if(atoi(cfg->Get("user_choseimaplimit")) == 1)
                     this->iLimit = atoi(utils->GetUserPref(this->iUserID, "imapLimit", cfg->Get("imap_limit")).c_str());

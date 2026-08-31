@@ -169,39 +169,42 @@ void SMTP::Auth(char *szLine)
         {
             MYSQL_ROW row;
             MySQL_Result *res = NULL;
-            if(strcmp(cfg->Get("salted_passwords"), "1") == 0)
+            bool bSaltedPasswords = strcmp(cfg->Get("salted_passwords"), "1") == 0;
+            if(bSaltedPasswords)
             {
                 if(bHaveSendStats)
                 {
-                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit_count`,bm60_gruppen.`send_limit_time`,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND bm60_users.`passwort`=MD5(CONCAT(MD5('%q'),bm60_users.passwort_salt)) AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
-                        iUserID,
-                        strPassword.c_str());
+                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit_count`,bm60_gruppen.`send_limit_time`,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap`,bm60_users.`passwort`,bm60_users.`passwort_salt` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
+                        iUserID);
                 }
                 else
                 {
-                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit`,86400,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND bm60_users.`passwort`=MD5(CONCAT(MD5('%q'),bm60_users.passwort_salt)) AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
-                        iUserID,
-                        strPassword.c_str());
+                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit`,86400,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap`,bm60_users.`passwort`,bm60_users.`passwort_salt` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
+                        iUserID);
                 }
             }
             else
             {
                 if(bHaveSendStats)
                 {
-                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit_count`,bm60_gruppen.`send_limit_time`,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND bm60_users.`passwort`=MD5('%q') AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
-                        iUserID,
-                        strPassword.c_str());
+                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit_count`,bm60_gruppen.`send_limit_time`,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap`,bm60_users.`passwort` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
+                        iUserID);
                 }
                 else
                 {
-                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit`,86400,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND bm60_users.`passwort`=MD5('%q') AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
-                        iUserID,
-                        strPassword.c_str());
+                    res = db->Query("SELECT bm60_gruppen.`anlagen`,bm60_gruppen.`send_limit`,86400,bm60_users.`today_sent`,bm60_users.`today_key`,bm60_gruppen.`max_recps`,bm60_gruppen.`id`,bm60_users.`lastlogin`,bm60_users.`last_pop3`,bm60_users.`last_imap`,bm60_users.`passwort` FROM bm60_users,bm60_gruppen WHERE bm60_users.`id`='%d' AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.`id`=bm60_users.`gruppe` AND bm60_gruppen.`smtp`='yes'",
+                        iUserID);
                 }
             }
             if(res->NumRows() > 0)
             {
                 row = res->FetchRow();
+
+                string strStoredHash = row[10];
+                string strSalt = bSaltedPasswords ? row[11] : "";
+                if(utils->VerifyUserPassword(strPassword, strStoredHash, strSalt))
+                {
+                    utils->UpgradeUserPasswordIfNeeded(iUserID, strPassword, strStoredHash);
 
                 if(!bHaveSendStats)
                 {
@@ -246,6 +249,7 @@ void SMTP::Auth(char *szLine)
                 this->iUserID = iUserID;
                 this->strAuthUser = strUser;
                 this->strAuthMethod = szAuthMethod;
+                }
             }
             delete res;
         }
