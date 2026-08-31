@@ -414,25 +414,29 @@ void POP3::Pass(char *szLine)
             int iLastPOP3 = 0, iMinPOP3 = atoi(cfg->Get("minpop3")), iLastLogin = 0;
             bool bMinPOP3Issue = false, bWebLoginIssue = false;
 
-            // check password
+            // check password (legacy MD5 + modern bcrypt, like b1gMail webmail)
             b1gMailServer::MySQL_Result *res = NULL;
-            if(strcmp(cfg->Get("salted_passwords"), "1") == 0)
+            bool bSaltedPasswords = strcmp(cfg->Get("salted_passwords"), "1") == 0;
+            if(bSaltedPasswords)
             {
-                res = db->Query("SELECT bm60_users.`gruppe`,bm60_users.`last_pop3`,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE bm60_users.passwort=MD5(CONCAT(MD5('%q'),bm60_users.passwort_salt)) AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.pop3='yes' AND bm60_users.id='%d'",
-                    strPass.c_str(),
+                res = db->Query("SELECT bm60_users.`gruppe`,bm60_users.`last_pop3`,bm60_users.`lastlogin`,bm60_users.`passwort`,bm60_users.`passwort_salt` FROM bm60_users,bm60_gruppen WHERE (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.pop3='yes' AND bm60_users.id='%d'",
                     this->iUserID);
             }
             else
             {
-                res = db->Query("SELECT bm60_users.`gruppe`,bm60_users.`last_pop3`,bm60_users.`lastlogin` FROM bm60_users,bm60_gruppen WHERE bm60_users.passwort=MD5('%q') AND (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.pop3='yes' AND bm60_users.id='%d'",
-                    strPass.c_str(),
+                res = db->Query("SELECT bm60_users.`gruppe`,bm60_users.`last_pop3`,bm60_users.`lastlogin`,bm60_users.`passwort` FROM bm60_users,bm60_gruppen WHERE (bm60_users.locked='no' AND bm60_users.gesperrt='no') AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.pop3='yes' AND bm60_users.id='%d'",
                     this->iUserID);
             }
             MYSQL_ROW row;
-            bool bOk = (res->NumRows() == 1);
-            if(bOk)
+            bool bOk = false;
+            if(res->NumRows() == 1)
             {
                 row = res->FetchRow();
+                string strStoredHash = row[3];
+                string strSalt = bSaltedPasswords ? row[4] : "";
+                bOk = utils->VerifyUserPassword(strPass, strStoredHash, strSalt);
+                if(bOk)
+                    utils->UpgradeUserPasswordIfNeeded(this->iUserID, strPass, strStoredHash);
                 iLastPOP3 = atoi(row[1]);
                 iLastLogin = atoi(row[2]);
             }
