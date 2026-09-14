@@ -168,12 +168,19 @@ bool Utils::VerifyUserPassword(const string &passwordPlain, const string &stored
     if(PasswordIsModern(storedHash))
         return VerifyModernPassword(passwordPlain, storedHash);
 
+    // Legacy MD5: b1gMail stores md5(md5(plain)+salt); salt may be empty.
     string password = LooksLikeMD5Hash(passwordPlain) ? passwordPlain : MD5(passwordPlain);
+    string salted = MD5(password + salt);
 
-    if(strcmp(cfg->Get("salted_passwords"), "1") == 0)
-        return strcasecmp(storedHash.c_str(), MD5(password + salt).c_str()) == 0;
+    if(strcasecmp(storedHash.c_str(), salted.c_str()) == 0)
+        return true;
 
-    return strcasecmp(storedHash.c_str(), MD5(passwordPlain).c_str()) == 0;
+    // Older unsalted installs stored a single MD5(plain).
+    if(strcmp(cfg->Get("salted_passwords"), "1") != 0
+        && strcasecmp(storedHash.c_str(), MD5(passwordPlain).c_str()) == 0)
+        return true;
+
+    return false;
 }
 
 bool Utils::PasswordNeedsUpgrade(const string &storedHash)

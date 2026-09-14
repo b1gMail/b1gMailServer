@@ -57,6 +57,7 @@ set(SOURCES
 	core/argon2/thread.c
 	core/argon2/blake2/blake2b.c
 	core/passwordhash.cpp
+	core/apppassword.cpp
 	core/mysql_db.cpp
 	core/mysql_result.cpp
 	core/process.cpp

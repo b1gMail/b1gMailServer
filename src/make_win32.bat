@@ -108,6 +108,8 @@ cl.exe %CLPARAMS% /I.\core\argon2\ /Foobj\argon2_blake2b.obj 			/c core/argon2/b
 if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /I.\core\argon2\ /Foobj\passwordhash.obj 			/c core/passwordhash.cpp
 if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\core\argon2\ /Foobj\apppassword.obj 			/c core/apppassword.cpp
+if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\config.obj 			/c core/config.cpp
 if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\exception.obj 		/c core/exception.cpp

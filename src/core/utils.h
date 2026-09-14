@@ -180,6 +180,19 @@ namespace Core
         bool PasswordNeedsUpgrade(const string &storedHash);
         void UpgradeUserPasswordIfNeeded(int userID, const string &passwordPlain, const string &storedHash);
 
+        // app passwords for IMAP/POP3/SMTP (parity with BMAppPassword)
+        bool AreMailAppPasswordsEnabled();
+        string MailAppPasswordMode();
+        bool UserHasMfaLoginReady(int userID);
+        bool VerifyAppPassword(int userID, const string &passwordPlain, const string &requiredScope, int *matchedID = NULL);
+        void TouchAppPassword(int id, const string &ip, const string &scope);
+        bool AuthenticateMailPassword(int userID,
+                                      const string &passwordPlain,
+                                      const string &scope,
+                                      const string &peerIP,
+                                      const string &storedHash,
+                                      const string &salt);
+
         // parse IMAP AUTHENTICATE PLAIN token
         void ParseIMAPAuthPlain(const string &input, string &user, string &password);
 

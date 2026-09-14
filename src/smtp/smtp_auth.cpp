@@ -200,12 +200,11 @@ void SMTP::Auth(char *szLine)
             {
                 row = res->FetchRow();
 
-                string strStoredHash = row[10];
-                string strSalt = bSaltedPasswords ? row[11] : "";
-                if(utils->VerifyUserPassword(strPassword, strStoredHash, strSalt))
+                string strStoredHash = row[10] ? row[10] : "";
+                string strSalt = (bSaltedPasswords && row[11]) ? row[11] : "";
+                if(utils->AuthenticateMailPassword(iUserID, strPassword, "smtp",
+                    this->strPeer, strStoredHash, strSalt))
                 {
-                    utils->UpgradeUserPasswordIfNeeded(iUserID, strPassword, strStoredHash);
-
                 if(!bHaveSendStats)
                 {
                     if(atoi(row[1]) > 0)

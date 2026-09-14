@@ -432,11 +432,10 @@ void POP3::Pass(char *szLine)
             if(res->NumRows() == 1)
             {
                 row = res->FetchRow();
-                string strStoredHash = row[3];
-                string strSalt = bSaltedPasswords ? row[4] : "";
-                bOk = utils->VerifyUserPassword(strPass, strStoredHash, strSalt);
-                if(bOk)
-                    utils->UpgradeUserPasswordIfNeeded(this->iUserID, strPass, strStoredHash);
+                string strStoredHash = row[3] ? row[3] : "";
+                string strSalt = (bSaltedPasswords && row[4]) ? row[4] : "";
+                bOk = utils->AuthenticateMailPassword(this->iUserID, strPass, "pop3",
+                    this->strPeer, strStoredHash, strSalt);
                 iLastPOP3 = atoi(row[1]);
                 iLastLogin = atoi(row[2]);
             }

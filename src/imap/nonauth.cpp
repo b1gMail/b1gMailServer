@@ -80,9 +80,10 @@ void IMAP::Login(char *szLine)
         bool bOk = false;
         while((row = res->FetchRow()))
         {
-            string strStoredHash = row[6];
-            string strSalt = bSaltedPasswords ? row[7] : "";
-            if(!utils->VerifyUserPassword(strPass, strStoredHash, strSalt))
+            string strStoredHash = row[6] ? row[6] : "";
+            string strSalt = (bSaltedPasswords && row[7]) ? row[7] : "";
+            if(!utils->AuthenticateMailPassword(atoi(row[0]), strPass, "imap",
+                this->strPeer, strStoredHash, strSalt))
                 continue;
 
             iLastLogin = atoi(row[5]);
@@ -109,8 +110,6 @@ void IMAP::Login(char *szLine)
                 sscanf(row[2], "%llu", &this->iSizeLimit);
                 this->iUserID = atoi(row[0]);
                 this->strUser = row[1];
-
-                utils->UpgradeUserPasswordIfNeeded(this->iUserID, strPass, strStoredHash);
 
                 if(atoi(cfg->Get("user_choseimaplimit")) == 1)
                     this->iLimit = atoi(utils->GetUserPref(this->iUserID, "imapLimit", cfg->Get("imap_limit")).c_str());
@@ -295,9 +294,10 @@ void IMAP::Authenticate(char *szLine)
         bool bOk = false;
         while((row = res->FetchRow()))
         {
-            string strStoredHash = row[6];
-            string strSalt = bSaltedPasswords ? row[7] : "";
-            if(!utils->VerifyUserPassword(strPassword, strStoredHash, strSalt))
+            string strStoredHash = row[6] ? row[6] : "";
+            string strSalt = (bSaltedPasswords && row[7]) ? row[7] : "";
+            if(!utils->AuthenticateMailPassword(atoi(row[0]), strPassword, "imap",
+                this->strPeer, strStoredHash, strSalt))
                 continue;
 
             iLastLogin = atoi(row[5]);
@@ -324,8 +324,6 @@ void IMAP::Authenticate(char *szLine)
                 sscanf(row[2], "%llu", &this->iSizeLimit);
                 this->iUserID = atoi(row[0]);
                 this->strUser = row[1];
-
-                utils->UpgradeUserPasswordIfNeeded(this->iUserID, strPassword, strStoredHash);
 
                 if(atoi(cfg->Get("user_choseimaplimit")) == 1)
                     this->iLimit = atoi(utils->GetUserPref(this->iUserID, "imapLimit", cfg->Get("imap_limit")).c_str());
