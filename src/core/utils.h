@@ -211,6 +211,12 @@ namespace Core
         // failban bad login notifier
         bool Failban_LoginFailed(const IPAddress &ip, char iType);
 
+        // recent failed-auth attempts for IP (0 if none / disabled / localhost)
+        int Failban_RecentAttempts(const IPAddress &ip, char iType);
+
+        // before expensive password hashing: reject if banned, else progressive delay
+        bool Failban_AllowExpensiveAuth(const IPAddress &ip, char iType);
+
         // trim a string
         string Trim(const string &s, const std::string &drop = " \r\n\t");
 

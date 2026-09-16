@@ -5,7 +5,10 @@ This is the GPLv2 release of the formerly proprietary b1gMailServer add-on for b
 ## Building
 You can build the Linux installer package using the `build.sh` script, provided that you have a recent Docker version installed on your system.
 
+Third-party crypto (libbcrypt, Argon2) is pulled in via git submodules. `build.sh` initializes them automatically; for a manual build run:
+
 ```
+git submodule update --init --recursive
 ./build.sh
 ```
 

@@ -43,10 +43,18 @@ string NormalizeMailMode(const char *value)
     return "off";
 }
 
+char FailbanTypeForScope(const string &scope)
+{
+    if(scope == "pop3")
+        return FAILBAN_POP3LOGIN;
+    if(scope == "smtp")
+        return FAILBAN_SMTPLOGIN;
+    return FAILBAN_IMAPLOGIN;
+}
+
 AppPasswordPrefs LoadAppPasswordPrefs()
 {
     AppPasswordPrefs prefs;
-
     try
     {
         MySQL_Result *res = db->Query(
@@ -63,9 +71,7 @@ AppPasswordPrefs LoadAppPasswordPrefs()
     }
     catch(Core::Exception &)
     {
-        // older b1gMail without app-password prefs
     }
-
     return prefs;
 }
 
@@ -78,15 +84,12 @@ bool ScopeInList(const string &scopeCsv, const string &requiredScope)
         string part = (comma == string::npos)
             ? scopeCsv.substr(start)
             : scopeCsv.substr(start, comma - start);
-
         if(part == requiredScope)
             return true;
-
         if(comma == string::npos)
             break;
         start = comma + 1;
     }
-
     return false;
 }
 
@@ -94,7 +97,6 @@ void SafeAuthLog(int severity, char *message)
 {
     if(message == NULL)
         return;
-
     try
     {
         db->Log(CMP_CORE, severity, message);
@@ -112,7 +114,6 @@ bool VerifyAppPasswordRows(int userID, const string &passwordPlain, const string
 
     int matchID = 0;
     int now = (int)time(NULL);
-
     MySQL_Result *res = db->Query(
         "SELECT `id`,`password_hash`,`scope`,`expires`,`revoked_at` FROM bm60_app_passwords WHERE `user`=%d",
         userID);
@@ -121,54 +122,36 @@ bool VerifyAppPasswordRows(int userID, const string &passwordPlain, const string
     while((row = res->FetchRow()))
     {
         string hash = row[1] ? row[1] : "";
-        string scopeCsv = row[2] ? row[2] : "";
+        if(!utils->VerifyModernPassword(passwordPlain, hash))
+            continue;
+        if((row[4] ? atoi(row[4]) : 0) != 0)
+            continue;
         int expires = row[3] ? atoi(row[3]) : 0;
-        int revokedAt = row[4] ? atoi(row[4]) : 0;
-        int id = row[0] ? atoi(row[0]) : 0;
-
-        bool ok = utils->VerifyModernPassword(passwordPlain, hash);
-        if(!ok)
-            continue;
-        if(revokedAt != 0)
-            continue;
         if(expires != 0 && expires < now)
             continue;
-        if(!ScopeInList(scopeCsv, requiredScope))
+        if(!ScopeInList(row[2] ? row[2] : "", requiredScope))
             continue;
-
-        // Keep iterating for timing parity with BMAppPassword::Verify().
         if(matchID == 0)
-            matchID = id;
+            matchID = row[0] ? atoi(row[0]) : 0;
     }
     delete res;
 
-    if(matchID > 0)
-    {
-        if(matchedID != NULL)
-            *matchedID = matchID;
-        return true;
-    }
-
-    return false;
+    if(matchID > 0 && matchedID != NULL)
+        *matchedID = matchID;
+    return matchID > 0;
 }
 
-bool AcceptAccountPassword(int userID,
-                           const string &passwordPlain,
-                           const string &storedHash,
-                           const string &salt)
+bool AcceptAccountPassword(int userID, const string &passwordPlain, const string &storedHash, const string &salt)
 {
     if(!utils->VerifyUserPassword(passwordPlain, storedHash, salt))
         return false;
-
     try
     {
         utils->UpgradeUserPasswordIfNeeded(userID, passwordPlain, storedHash);
     }
     catch(...)
     {
-        // Rehash is best-effort; never fail a valid login because of it.
     }
-
     return true;
 }
 
@@ -188,7 +171,6 @@ bool Utils::UserHasMfaLoginReady(int userID)
 {
     if(userID <= 0)
         return false;
-
     try
     {
         MySQL_Result *res = db->Query(
@@ -200,7 +182,6 @@ bool Utils::UserHasMfaLoginReady(int userID)
             delete res;
             return false;
         }
-
         MYSQL_ROW row = res->FetchRow();
         string enabled = row[0] ? row[0] : "";
         string totpEnabled = row[1] ? row[1] : "";
@@ -211,17 +192,13 @@ bool Utils::UserHasMfaLoginReady(int userID)
 
         if(enabled != "yes")
             return false;
-
         if(!totpSecret.empty() && totpEnabled == "yes")
             return true;
         if(emailEnabled == "yes")
             return true;
         if(recoveryMode == "altmail")
             return true;
-        if(!totpSecret.empty())
-            return true;
-
-        return false;
+        return !totpSecret.empty();
     }
     catch(Core::Exception &)
     {
@@ -233,15 +210,12 @@ bool Utils::VerifyAppPassword(int userID, const string &passwordPlain, const str
 {
     if(matchedID != NULL)
         *matchedID = 0;
-
     if(userID <= 0 || passwordPlain.empty() || requiredScope.empty())
         return false;
 
     AppPasswordPrefs prefs = LoadAppPasswordPrefs();
-    // MODE_OFF: app passwords are disabled for mail — account password only.
     if(!prefs.mailScopesActive() || prefs.mailMode == "off")
         return false;
-
     if(requiredScope != "imap" && requiredScope != "pop3" && requiredScope != "smtp")
         return false;
 
@@ -259,22 +233,12 @@ void Utils::TouchAppPassword(int id, const string &ip, const string &scope)
 {
     if(id <= 0)
         return;
-
-    string ipTrim = ip;
-    if(ipTrim.length() > 64)
-        ipTrim = ipTrim.substr(0, 64);
-
-    string scopeTrim = scope;
-    if(scopeTrim.length() > 16)
-        scopeTrim = scopeTrim.substr(0, 16);
-
+    string ipTrim = ip.length() > 64 ? ip.substr(0, 64) : ip;
+    string scopeTrim = scope.length() > 16 ? scope.substr(0, 16) : scope;
     try
     {
         db->Query("UPDATE bm60_app_passwords SET `last_used`=%d, `last_ip`='%q', `last_scope`='%q' WHERE `id`=%d",
-            (int)time(NULL),
-            ipTrim.c_str(),
-            scopeTrim.c_str(),
-            id);
+            (int)time(NULL), ipTrim.c_str(), scopeTrim.c_str(), id);
     }
     catch(Core::Exception &)
     {
@@ -291,6 +255,19 @@ bool Utils::AuthenticateMailPassword(int userID,
     if(userID <= 0 || passwordPlain.empty())
         return false;
 
+    // Throttle / reject before bcrypt/Argon2 (and before app-password loops).
+    if(!peerIP.empty() && peerIP != "(unknown)")
+    {
+        try
+        {
+            if(!Failban_AllowExpensiveAuth(IPAddress(peerIP), FailbanTypeForScope(scope)))
+                return false;
+        }
+        catch(...)
+        {
+        }
+    }
+
     AppPasswordPrefs prefs;
     try
     {
@@ -300,7 +277,6 @@ bool Utils::AuthenticateMailPassword(int userID,
     {
     }
 
-    // MODE_OFF or mail subsystem inactive: account password only (no app-password path).
     const bool allowAppPasswords = prefs.mailScopesActive() && prefs.mailMode != "off";
 
     if(allowAppPasswords)
@@ -310,13 +286,7 @@ bool Utils::AuthenticateMailPassword(int userID,
             int appID = 0;
             if(VerifyAppPasswordRows(userID, passwordPlain, scope, &appID))
             {
-                try
-                {
-                    TouchAppPassword(appID, peerIP, scope);
-                }
-                catch(...)
-                {
-                }
+                try { TouchAppPassword(appID, peerIP, scope); } catch(...) {}
                 SafeAuthLog(PRIO_NOTE, PrintF(
                     "Mail auth user=%d scope=%s via app password id=%d",
                     userID, scope.c_str(), appID));
@@ -325,17 +295,10 @@ bool Utils::AuthenticateMailPassword(int userID,
         }
         catch(...)
         {
-            // App-password DB/crypto failures must not block account password.
         }
 
         bool mfaReady = false;
-        try
-        {
-            mfaReady = UserHasMfaLoginReady(userID);
-        }
-        catch(...)
-        {
-        }
+        try { mfaReady = UserHasMfaLoginReady(userID); } catch(...) {}
 
         SafeAuthLog(PRIO_NOTE, PrintF(
             "Mail auth decision user=%d scope=%s mode=%s mfa_ready=%s",
@@ -348,7 +311,6 @@ bool Utils::AuthenticateMailPassword(int userID,
                 userID, scope.c_str()));
             return false;
         }
-
         if(mfaReady && prefs.mailMode == "enforce")
         {
             SafeAuthLog(PRIO_WARNING, PrintF(
@@ -356,18 +318,14 @@ bool Utils::AuthenticateMailPassword(int userID,
                 userID, scope.c_str()));
             return false;
         }
-
         if(mfaReady && prefs.mailMode == "warn")
         {
-            // Logged only after account password succeeds (below).
-            if(AcceptAccountPassword(userID, passwordPlain, storedHash, salt))
-            {
-                SafeAuthLog(PRIO_WARNING, PrintF(
-                    "Mail auth user=%d via account password despite active MFA (deprecated; scope=%s)",
-                    userID, scope.c_str()));
-                return true;
-            }
-            return false;
+            if(!AcceptAccountPassword(userID, passwordPlain, storedHash, salt))
+                return false;
+            SafeAuthLog(PRIO_WARNING, PrintF(
+                "Mail auth user=%d via account password despite active MFA (deprecated; scope=%s)",
+                userID, scope.c_str()));
+            return true;
         }
     }
 

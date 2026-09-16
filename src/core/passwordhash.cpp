@@ -7,7 +7,7 @@
 
 #include <core/utils.h>
 #include <core/exception.h>
-#include <core/bcrypt/bcrypt.h>
+#include <bcrypt.h>
 #include <argon2.h>
 
 #include <openssl/rand.h>
