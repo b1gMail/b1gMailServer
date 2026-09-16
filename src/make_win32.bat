@@ -86,6 +86,30 @@ cl.exe %CLPARAMS% /Foobj\license.obj 		/c core/license.cpp
 if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\md5.obj 			/c core/md5.c
 if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\libbcrypt\ /I.\third_party\libbcrypt\crypt_blowfish\ /Foobj\bcrypt.obj 			/c third_party/libbcrypt/bcrypt.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\libbcrypt\ /I.\third_party\libbcrypt\crypt_blowfish\ /Foobj\crypt_blowfish.obj 			/c third_party/libbcrypt/crypt_blowfish/crypt_blowfish.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\libbcrypt\ /I.\third_party\libbcrypt\crypt_blowfish\ /Foobj\crypt_gensalt.obj 			/c third_party/libbcrypt/crypt_blowfish/crypt_gensalt.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\libbcrypt\ /I.\third_party\libbcrypt\crypt_blowfish\ /Foobj\bcrypt_wrapper.obj 			/c third_party/libbcrypt/crypt_blowfish/wrapper.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\phc-winner-argon2\include\ /I.\third_party\phc-winner-argon2\src\ /Foobj\argon2.obj 			/c third_party/phc-winner-argon2/src/argon2.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\phc-winner-argon2\include\ /I.\third_party\phc-winner-argon2\src\ /Foobj\argon2_core.obj 			/c third_party/phc-winner-argon2/src/core.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\phc-winner-argon2\include\ /I.\third_party\phc-winner-argon2\src\ /Foobj\argon2_encoding.obj 			/c third_party/phc-winner-argon2/src/encoding.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\phc-winner-argon2\include\ /I.\third_party\phc-winner-argon2\src\ /Foobj\argon2_ref.obj 			/c third_party/phc-winner-argon2/src/ref.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\phc-winner-argon2\include\ /I.\third_party\phc-winner-argon2\src\ /Foobj\argon2_thread.obj 			/c third_party/phc-winner-argon2/src/thread.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\phc-winner-argon2\include\ /I.\third_party\phc-winner-argon2\src\ /Foobj\argon2_blake2b.obj 			/c third_party/phc-winner-argon2/src/blake2/blake2b.c
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\libbcrypt\ /I.\third_party\phc-winner-argon2\include\ /Foobj\passwordhash.obj 			/c core/passwordhash.cpp
+if ERRORLEVEL 1 exit /B 1
+cl.exe %CLPARAMS% /I.\third_party\libbcrypt\ /I.\third_party\phc-winner-argon2\include\ /Foobj\apppassword.obj 			/c core/apppassword.cpp
+if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\config.obj 			/c core/config.cpp
 if ERRORLEVEL 1 exit /B 1
 cl.exe %CLPARAMS% /Foobj\exception.obj 		/c core/exception.cpp

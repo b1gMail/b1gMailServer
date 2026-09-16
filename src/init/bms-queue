@@ -19,6 +19,17 @@ pid_file=$bms_dir/queue/pid
 action=$1
 stoptimeout=30
 
+cleanup_queue_children()
+{
+  if command -v pkill >/dev/null 2>&1; then
+    pkill -TERM -f 'b1gmailserver.*--msgqueue' 2>/dev/null
+    pkill -TERM -f 'interface/pipe\.php' 2>/dev/null
+    sleep 2
+    pkill -KILL -f 'b1gmailserver.*--msgqueue' 2>/dev/null
+    pkill -KILL -f 'interface/pipe\.php' 2>/dev/null
+  fi
+}
+
 if test -f /lib/lsb/init-functions ; then
   . /lib/lsb/init-functions
 else
@@ -76,17 +87,21 @@ case "$action" in
         done
 
         if [ "$success" = "1" ] ; then
+          cleanup_queue_children
           log_success_msg
           exit 0
         else
+          cleanup_queue_children
           log_failure_msg "Timeout while stopping bms-queue"
           exit 1
         fi
       else
+        cleanup_queue_children
         log_failure_msg
       fi
       exit $return_value
     else
+      cleanup_queue_children
       log_success_msg
       exit 0
     fi

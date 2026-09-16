@@ -1,0 +1,6 @@
+[submodule "src/third_party/libbcrypt"]
+	path = src/third_party/libbcrypt
+	url = https://github.com/rg3/libbcrypt.git
+[submodule "src/third_party/phc-winner-argon2"]
+	path = src/third_party/phc-winner-argon2
+	url = https://github.com/P-H-C/phc-winner-argon2.git

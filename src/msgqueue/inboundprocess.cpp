@@ -83,7 +83,19 @@ void InboundProcess::beginSession()
 void InboundProcess::endSession()
 {
     if(this->proc != NULL)
+    {
+        if(this->keepAlive && this->proc->IsOpen())
+        {
+            FILE *fpPipeIn = this->proc->GetInputFP();
+            if(fpPipeIn != NULL)
+            {
+                fprintf(fpPipeIn, "QUIT\r\n");
+                fflush(fpPipeIn);
+            }
+        }
+
         delete proc;
+    }
 
     this->proc = NULL;
     this->sessionActive = false;

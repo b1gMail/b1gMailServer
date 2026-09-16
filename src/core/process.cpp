@@ -206,9 +206,9 @@ int Process::EndProcess(int *quitSignal)
     // timeout?
     if(timeout)
     {
-        // ask politely to quit
+        // ask politely to quit (process group: sh + php pipe.php children)
         if(quitSignal != NULL) *quitSignal = SIGTERM;
-        kill(this->pid, SIGTERM);
+        kill(-this->pid, SIGTERM);
 
         // wait 5 seconds for exit
         timeout = true;
@@ -217,7 +217,7 @@ int Process::EndProcess(int *quitSignal)
         {
             waitpid(this->pid, &result, WNOHANG);
 
-            if(kill(this->pid, 0) == -1)
+            if(kill(-this->pid, 0) == -1 && kill(this->pid, 0) == -1)
             {
                 timeout = false;
                 break;
@@ -230,7 +230,7 @@ int Process::EndProcess(int *quitSignal)
         if(timeout)
         {
             if(quitSignal != NULL) *quitSignal = SIGKILL;
-            kill(this->pid, SIGKILL);
+            kill(-this->pid, SIGKILL);
         }
 
         // avoid zombies

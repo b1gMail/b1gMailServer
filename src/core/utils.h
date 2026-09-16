@@ -172,6 +172,27 @@ namespace Core
         // md5
         string MD5(const string &input);
 
+        // password hashing (b1gMail-compatible: legacy MD5 + bcrypt + argon2id)
+        bool PasswordIsModern(const string &hash);
+        bool LooksLikeMD5Hash(const string &in);
+        bool VerifyModernPassword(const string &passwordPlain, const string &storedHash);
+        bool VerifyUserPassword(const string &passwordPlain, const string &storedHash, const string &salt);
+        bool PasswordNeedsUpgrade(const string &storedHash);
+        void UpgradeUserPasswordIfNeeded(int userID, const string &passwordPlain, const string &storedHash);
+
+        // app passwords for IMAP/POP3/SMTP (parity with BMAppPassword)
+        bool AreMailAppPasswordsEnabled();
+        string MailAppPasswordMode();
+        bool UserHasMfaLoginReady(int userID);
+        bool VerifyAppPassword(int userID, const string &passwordPlain, const string &requiredScope, int *matchedID = NULL);
+        void TouchAppPassword(int id, const string &ip, const string &scope);
+        bool AuthenticateMailPassword(int userID,
+                                      const string &passwordPlain,
+                                      const string &scope,
+                                      const string &peerIP,
+                                      const string &storedHash,
+                                      const string &salt);
+
         // parse IMAP AUTHENTICATE PLAIN token
         void ParseIMAPAuthPlain(const string &input, string &user, string &password);
 
@@ -189,6 +210,12 @@ namespace Core
 
         // failban bad login notifier
         bool Failban_LoginFailed(const IPAddress &ip, char iType);
+
+        // recent failed-auth attempts for IP (0 if none / disabled / localhost)
+        int Failban_RecentAttempts(const IPAddress &ip, char iType);
+
+        // before expensive password hashing: reject if banned, else progressive delay
+        bool Failban_AllowExpensiveAuth(const IPAddress &ip, char iType);
 
         // trim a string
         string Trim(const string &s, const std::string &drop = " \r\n\t");

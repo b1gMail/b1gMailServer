@@ -29,6 +29,7 @@
 
 #ifndef WIN32
 #include <resolv.h>
+#include <sys/prctl.h>
 #endif
 
 #ifdef WIN32
@@ -1172,6 +1173,68 @@ bool Utils::Failban_LoginFailed(const IPAddress &ip, char iType)
     delete res;
 
     return(bResult);
+}
+
+/*
+ * Count recent failban attempts for an IP within failban_time.
+ */
+int Utils::Failban_RecentAttempts(const IPAddress &ip, char iType)
+{
+    if((atoi(cfg->Get("failban_types")) & iType) == 0
+       || ip.isLocalhost())
+        return 0;
+
+    MySQL_Result *res;
+    if(!ip.isIPv6)
+    {
+        res = db->Query("SELECT `last_update`,`attempts`,`banned_until` FROM bm60_bms_failban WHERE `ip`='%s' AND `ip6`='' AND `type`=%d",
+            ip.dbString().c_str(),
+            (int)iType);
+    }
+    else
+    {
+        res = db->Query("SELECT `last_update`,`attempts`,`banned_until` FROM bm60_bms_failban WHERE `ip`=0 AND `ip6`='%s' AND `type`=%d",
+            ip.dbString().c_str(),
+            (int)iType);
+    }
+
+    int attempts = 0;
+    if(res->NumRows() > 0)
+    {
+        MYSQL_ROW row = res->FetchRow();
+        int lastUpdate = atoi(row[0]);
+        int storedAttempts = atoi(row[1]);
+        int bannedUntil = atoi(row[2]);
+
+        if(bannedUntil >= (int)time(NULL))
+            attempts = storedAttempts;
+        else if(lastUpdate >= (int)time(NULL) - atoi(cfg->Get("failban_time")))
+            attempts = storedAttempts;
+    }
+    delete res;
+    return attempts;
+}
+
+/*
+ * Gate expensive auth (bcrypt/Argon2). Returns false if the IP is already banned.
+ * Otherwise applies a progressive delay based on recent failures so attackers
+ * pay wall-clock time before the costly hash work runs.
+ */
+bool Utils::Failban_AllowExpensiveAuth(const IPAddress &ip, char iType)
+{
+    if(Failban_IsBanned(ip, iType))
+        return false;
+
+    int attempts = Failban_RecentAttempts(ip, iType);
+    if(attempts <= 0)
+        return true;
+
+    // 0.5s .. 5s before hash verification (caps CPU burn under parallel attempts)
+    int delayMs = attempts * 500;
+    if(delayMs > 5000)
+        delayMs = 5000;
+    MilliSleep((unsigned int)delayMs);
+    return true;
 }
 
 /*
@@ -2387,8 +2450,16 @@ pid_t Utils::POpen(const char *command, int *infp, int *outfp)
         close(p_stdin[PIPE_READ]);
         close(p_stdout[PIPE_WRITE]);
 
+        // Own process group so sh + php pipe children can be stopped together.
+        setpgid(0, 0);
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+
         execl("/bin/sh", "sh", "-c", command, NULL);
         _exit(127);
+    }
+    else
+    {
+        setpgid(pid, pid);
     }
 
     if(infp == NULL)
