@@ -10,17 +10,17 @@ RUN mkdir -p /buildenv/include
 
 WORKDIR /src/buildenv
 
-RUN wget https://github.com/openssl/openssl/releases/download/openssl-3.4.1/openssl-3.4.1.tar.gz
-RUN tar xzf openssl-3.4.1.tar.gz
-RUN cd openssl-3.4.1 && ./config --prefix=/buildenv --openssldir=/buildenv/usr/ssl --libdir=lib no-tests shared && make -j && make -j install && cd ..
+RUN wget https://github.com/openssl/openssl/releases/download/openssl-3.5.7/openssl-3.5.7.tar.gz
+RUN tar xzf openssl-3.5.7.tar.gz
+RUN cd openssl-3.5.7 && ./config --prefix=/buildenv --openssldir=/buildenv/usr/ssl --libdir=lib no-tests shared && make -j && make -j install && cd ..
 
 RUN wget https://invisible-mirror.net/archives/dialog/dialog-1.3-20160828.tgz
 RUN tar xzf dialog-1.3-20160828.tgz
 RUN cd dialog-1.3-20160828 && ./configure --disable-widec --prefix=/buildenv && make -j && make install && cp dlg_config.h dialog.h /buildenv/include && cd ..
 
-RUN wget https://dlm.mariadb.com/4047871/Connectors/c/connector-c-3.4.4/mariadb-connector-c-3.4.4-src.tar.gz
-RUN tar xzf mariadb-connector-c-3.4.4-src.tar.gz
-RUN cd mariadb-connector-c-3.4.4-src && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/buildenv -DOPENSSL_ROOT_DIR=/buildenv .. && make -j && make install && cd ..
+RUN wget https://dlm.mariadb.com/4751056/Connectors/c/connector-c-3.4.9/mariadb-connector-c-3.4.9-src.tar.gz
+RUN tar xzf mariadb-connector-c-3.4.9-src.tar.gz
+RUN cd mariadb-connector-c-3.4.9-src && mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/buildenv -DOPENSSL_ROOT_DIR=/buildenv .. && make -j && make install && cd ..
 
 RUN wget http://ftp.cs.stanford.edu/pub/exim/pcre/pcre-8.45.tar.gz
 RUN tar xzf pcre-8.45.tar.gz
