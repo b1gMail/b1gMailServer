@@ -231,12 +231,12 @@ void HTTP::ProcessRequest()
 
     if(strcmp(cfg->Get("user_space_add"), "1") == 0)
     {
-        db->Query("SELECT bm60_users.id, bm60_users.traffic_up, bm60_users.traffic_down, bm60_gruppen.traffic+bm60_users.traffic_add AS traffic, bm60_gruppen.wd_open_kbs, bm60_gruppen.id FROM bm60_users,bm60_gruppen WHERE bm60_users.email='%q' AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.share='yes' AND bm60_gruppen.webdisk>0",
+        res = db->Query("SELECT bm60_users.id, bm60_users.traffic_up, bm60_users.traffic_down, bm60_gruppen.traffic+bm60_users.traffic_add AS traffic, bm60_gruppen.wd_open_kbs, bm60_gruppen.id FROM bm60_users,bm60_gruppen WHERE bm60_users.email='%q' AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.share='yes' AND bm60_gruppen.webdisk>0",
             szSearchUser);
     }
     else
     {
-        db->Query("SELECT bm60_users.id, bm60_users.traffic_up, bm60_users.traffic_down, bm60_gruppen.traffic, bm60_gruppen.wd_open_kbs, bm60_gruppen.id FROM bm60_users,bm60_gruppen WHERE bm60_users.email='%q' AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.share='yes' AND bm60_gruppen.webdisk>0",
+        res = db->Query("SELECT bm60_users.id, bm60_users.traffic_up, bm60_users.traffic_down, bm60_gruppen.traffic, bm60_gruppen.wd_open_kbs, bm60_gruppen.id FROM bm60_users,bm60_gruppen WHERE bm60_users.email='%q' AND bm60_gruppen.id=bm60_users.gruppe AND bm60_gruppen.share='yes' AND bm60_gruppen.webdisk>0",
             szSearchUser);
     }
     MYSQL_ROW row;

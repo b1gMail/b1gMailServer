@@ -184,7 +184,10 @@ int main(int argc, char *argv[])
         }
 
 #ifndef WIN32
-        chdir("/opt/b1gmailserver");
+        if (chdir("/opt/b1gmailserver") != 0)
+        {
+            throw Core::Exception("Failed to chdir to /opt/b1gmailserver!");
+        }
 
         const char *szGroupName = cfg->Get("group");
         if(szGroupName != NULL)

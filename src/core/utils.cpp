@@ -37,8 +37,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-
-#include <core/tls_dh.h>
+#include <openssl/evp.h>
 
 #include <mysql.h>
 
@@ -296,55 +295,6 @@ void IPAddress::toCharBuff(char *buffer, int bufferLength) const
     }
 }
 
-static DH *g_dh512 = NULL, *g_dh1024 = NULL, *g_dh2048 = NULL, *g_dh4096 = NULL;
-
-static DH *TLS_DHCallback(SSL *s, int is_export, int keylength)
-{
-    DH *result = NULL;
-    int type = EVP_PKEY_NONE;
-
-    EVP_PKEY *pkey = SSL_get_privatekey(s);
-    if(pkey != NULL)
-        type = EVP_PKEY_base_id(pkey);
-
-    if(type == EVP_PKEY_RSA || type == EVP_PKEY_DSA)
-    {
-        keylength = EVP_PKEY_bits(pkey);
-    }
-
-    switch(keylength)
-    {
-    case 512:
-        if(g_dh512 == NULL)
-            g_dh512 = get_dh512();
-        result = g_dh512;
-        break;
-
-    case 1024:
-        if(g_dh1024 == NULL)
-            g_dh1024 = get_dh1024();
-        result = g_dh1024;
-        break;
-
-    case 2048:
-        if(g_dh2048 == NULL)
-            g_dh2048 = get_dh2048();
-        result = g_dh2048;
-        break;
-
-    case 4096:
-        if(g_dh4096 == NULL)
-            g_dh4096 = get_dh4096();
-        result = g_dh4096;
-        break;
-
-    default:
-        break;
-    };
-
-    return(result);
-}
-
 string Utils::GetAPNSTopic()
 {
     string result, errMsg = "Unknown error";
@@ -575,7 +525,10 @@ int Utils::AddAbusePoint(int userID, int type, const char *comment, ...)
     va_start(list, comment);
     char *formattedComment = NULL;
 #ifndef WIN32
-    vasprintf(&formattedComment, comment, list);
+    if (vasprintf(&formattedComment, comment, list) < 0)
+    {
+        return(0);
+    }
 #else
     int formattedCommentLength = _vscprintf(comment, list);
     formattedComment = new char[formattedCommentLength+1];
@@ -1985,15 +1938,6 @@ bool Utils::SetSocketRecvTimeout(int sock, int seconds)
 #endif
 }
 
-void Utils::SetTLSDHParams(SSL_CTX *ssl_ctx, const char *dhPath)
-{
-    SSL_CTX_set_tmp_dh_callback(ssl_ctx, TLS_DHCallback);
-
-    EC_KEY *ecDH = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    SSL_CTX_set_tmp_ecdh(ssl_ctx, ecDH);
-    EC_KEY_free(ecDH);
-}
-
 string Utils::CertHash()
 {
 #ifndef WIN32
@@ -2032,17 +1976,22 @@ string Utils::CertHash()
 
             if(i2d_X509(x509, &tmp) == length)
             {
-                unsigned char hash[SHA256_DIGEST_LENGTH];
-                SHA256_CTX sha256;
-                SHA256_Init(&sha256);
-                SHA256_Update(&sha256, buffer, length);
-                SHA256_Final(hash, &sha256);
-
-                char hexBuff[3];
-                for(unsigned int i=0; i<sizeof(hash); i++)
+                EVP_MD_CTX *sha256 = EVP_MD_CTX_new();
+                if (sha256 != nullptr)
                 {
-                    snprintf(hexBuff, 3, "%02X", hash[i]);
-                    result.append(hexBuff);
+                    std::vector<uint8_t> hash(EVP_MD_size(EVP_sha256()));
+
+                    if (EVP_DigestInit_ex(sha256, EVP_sha256(), nullptr) && EVP_DigestUpdate(sha256, buffer, length) && EVP_DigestFinal_ex(sha256, hash.data(), nullptr))
+                    {
+                        char hexBuff[3];
+                        for(std::size_t i=0; i < hash.size(); i++)
+                        {
+                            snprintf(hexBuff, 3, "%02X", hash[i]);
+                            result.append(hexBuff);
+                        }
+                    }
+
+                    EVP_MD_CTX_free(sha256);
                 }
             }
 
@@ -2095,8 +2044,7 @@ bool Utils::BeginTLS(SSL_CTX *ssl_ctx, char *szErrorOut, int iTimeout)
 
     string keyPath = string(szPath) + string("tls\\server.key"),
         certPath = string(szPath) + string("tls\\server.cert"),
-        chainCertPath = string(szPath) + string("tls\\chain.cert"),
-        dhPath = string(szPath) + string("tls\\dh.pem");
+        chainCertPath = string(szPath) + string("tls\\chain.cert");
 #endif
 
     if((ssl_ctx = SSL_CTX_new(SSLv23_server_method())) == 0)
@@ -2179,8 +2127,7 @@ bool Utils::BeginTLS(SSL_CTX *ssl_ctx, char *szErrorOut, int iTimeout)
         return(false);
     }
 
-    this->SetTLSDHParams(ssl_ctx, dhPath.c_str());
-
+    SSL_CTX_set_dh_auto(ssl_ctx, 1);
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_NONE, 0);
 
     if((ssl = SSL_new(ssl_ctx)) == 0)

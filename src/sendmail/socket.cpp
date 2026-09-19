@@ -153,7 +153,7 @@ int Socket::PrintF(const char *szFormat, ...)
     char *szStr = NULL;
 
     result = vasprintf(&szStr, szFormat, arglist);
-    if(szStr == NULL)
+    if(result < 0 || szStr == NULL)
         return(0);
 
     int iResult = this->Write(szStr, result);

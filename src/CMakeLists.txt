@@ -53,7 +53,6 @@ set(SOURCES
 	core/socket.cpp
 	core/sqlite.cpp
 	core/threadpool.cpp
-	core/tls_dh.cpp
 	core/utils.cpp
 	core/win_compat.cpp
 	http/http.cpp
