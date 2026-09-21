@@ -215,6 +215,9 @@ namespace Core
         // check if file exists
         bool FileExists(const char *szFile);
 
+        // write /opt/b1gmailserver/logrotate.cfg and /etc/logrotate.d/b1gmailserver
+        void EnsureLogrotate();
+
         // get file size
         size_t FileSize(const char *szFile);
 

@@ -22,6 +22,7 @@
 #define _UTILS_H_
 
 #include <string>
+#include <ostream>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +58,15 @@ public:
     static bool installLibs();
     static bool installFile(std::string srcFile, std::string destFile, mode_t perms);
     static bool fileExists(std::string fileName);
+    static std::string readBmsCfgValue(const std::string &key);
+    static bool ensureLogrotate();
+    static void writeCfgOverrideComments(std::ostream &out);
+    static void writeCfgLogrotateComments(std::ostream &out,
+        bool withLogfile = true,
+        bool withLogrotate = true,
+        bool withInterval = true,
+        bool withRotate = true,
+        bool withCompress = true);
     static std::string md5(std::string str);
     static std::string quotedPrintableDecode(std::string str);
     static std::string base64Encode(std::string str);

@@ -214,6 +214,10 @@ void SetupServer::install(string &errorMsg)
 
         configFile << "user            = " << this->userName << endl;
         configFile << "group           = " << this->userGroup << endl;
+        configFile << endl;
+        Utils::writeCfgOverrideComments(configFile);
+        configFile << endl;
+        Utils::writeCfgLogrotateComments(configFile);
 
         configFile.close();
     }
@@ -278,6 +282,7 @@ void SetupServer::install(string &errorMsg)
     //
     system("chown root /opt/b1gmailserver/b1gmailserver.cfg >/dev/null 2>/dev/null");
     chmod("/opt/b1gmailserver/b1gmailserver.cfg", 0600);
+    Utils::ensureLogrotate();
 
     //
     // set queue permissions

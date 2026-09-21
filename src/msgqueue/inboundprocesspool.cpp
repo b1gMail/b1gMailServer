@@ -40,22 +40,26 @@ InboundProcessPool::~InboundProcessPool()
 
 InboundProcess *InboundProcessPool::getInboundProcess()
 {
-    InboundProcess *proc = NULL;
-
-    pthread_mutex_lock(&this->lock);
-    if(!this->pool.empty())
+    while(true)
     {
-        proc = this->pool.front();
-        this->pool.pop();
-    }
-    pthread_mutex_unlock(&this->lock);
+        InboundProcess *proc = NULL;
 
-    if(proc == NULL)
-    {
-        proc = this->createInboundProcess();
-    }
+        pthread_mutex_lock(&this->lock);
+        if(!this->pool.empty())
+        {
+            proc = this->pool.front();
+            this->pool.pop();
+        }
+        pthread_mutex_unlock(&this->lock);
 
-    return(proc);
+        if(proc == NULL)
+            return(this->createInboundProcess());
+
+        if(!proc->shouldDiscard())
+            return(proc);
+
+        delete proc;
+    }
 }
 
 InboundProcess *InboundProcessPool::createInboundProcess()
@@ -66,7 +70,33 @@ InboundProcess *InboundProcessPool::createInboundProcess()
 
 void InboundProcessPool::putBackInboundProcess(InboundProcess *proc)
 {
+    if(proc == NULL)
+        return;
+
+    if(proc->shouldDiscard())
+    {
+        delete proc;
+        return;
+    }
+
     pthread_mutex_lock(&this->lock);
     this->pool.push(proc);
+    pthread_mutex_unlock(&this->lock);
+}
+
+void InboundProcessPool::cleanUp()
+{
+    pthread_mutex_lock(&this->lock);
+    size_t n = this->pool.size();
+    while(n-- > 0)
+    {
+        InboundProcess *proc = this->pool.front();
+        this->pool.pop();
+
+        if(proc->shouldDiscard())
+            delete proc;
+        else
+            this->pool.push(proc);
+    }
     pthread_mutex_unlock(&this->lock);
 }

@@ -35,6 +35,7 @@ public:
 public:
     InboundProcess *getInboundProcess();
     void putBackInboundProcess(InboundProcess *proc);
+    void cleanUp();
 
 private:
     InboundProcess *createInboundProcess();

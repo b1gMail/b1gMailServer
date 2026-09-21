@@ -25,6 +25,7 @@
 #include <set>
 #include <iostream>
 #include <stack>
+#include <stdint.h>
 
 static const char *szMonths[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
@@ -1256,40 +1257,328 @@ void IMAPHelper::PrintLiteralString(const char *szString)
     fwrite(szString, strlen(szString), 1, stdout);
 }
 
+static bool utf8IsValid(const char *szStr, size_t len)
+{
+    size_t i = 0;
+    while(i < len)
+    {
+        unsigned char c = (unsigned char)szStr[i];
+        if(c <= 0x7F)
+        {
+            i++;
+            continue;
+        }
+
+        int extra;
+        uint32_t cp, minCp;
+        if((c & 0xE0) == 0xC0)
+        {
+            extra = 1;
+            cp = c & 0x1F;
+            minCp = 0x80;
+        }
+        else if((c & 0xF0) == 0xE0)
+        {
+            extra = 2;
+            cp = c & 0x0F;
+            minCp = 0x800;
+        }
+        else if((c & 0xF8) == 0xF0)
+        {
+            extra = 3;
+            cp = c & 0x07;
+            minCp = 0x10000;
+        }
+        else
+            return(false);
+
+        if(i + (size_t)extra >= len)
+            return(false);
+
+        for(int j = 1; j <= extra; j++)
+        {
+            unsigned char cc = (unsigned char)szStr[i + j];
+            if((cc & 0xC0) != 0x80)
+                return(false);
+            cp = (cp << 6) | (cc & 0x3F);
+        }
+
+        if(cp < minCp || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF))
+            return(false);
+
+        i += (size_t)extra + 1;
+    }
+    return(true);
+}
+
+static void utf8Append(string &out, uint32_t cp)
+{
+    if(cp <= 0x7F)
+        out.append(1, (char)cp);
+    else if(cp <= 0x7FF)
+    {
+        out.append(1, (char)(0xC0 | (cp >> 6)));
+        out.append(1, (char)(0x80 | (cp & 0x3F)));
+    }
+    else if(cp <= 0xFFFF)
+    {
+        out.append(1, (char)(0xE0 | (cp >> 12)));
+        out.append(1, (char)(0x80 | ((cp >> 6) & 0x3F)));
+        out.append(1, (char)(0x80 | (cp & 0x3F)));
+    }
+    else if(cp <= 0x10FFFF)
+    {
+        out.append(1, (char)(0xF0 | (cp >> 18)));
+        out.append(1, (char)(0x80 | ((cp >> 12) & 0x3F)));
+        out.append(1, (char)(0x80 | ((cp >> 6) & 0x3F)));
+        out.append(1, (char)(0x80 | (cp & 0x3F)));
+    }
+}
+
+static size_t utf8NextCp(const string &s, size_t i, uint32_t *cp)
+{
+    if(i >= s.size())
+    {
+        *cp = 0;
+        return(0);
+    }
+
+    unsigned char c = (unsigned char)s[i];
+    if(c <= 0x7F)
+    {
+        *cp = c;
+        return(1);
+    }
+    if((c & 0xE0) == 0xC0 && i + 1 < s.size())
+    {
+        *cp = ((uint32_t)(c & 0x1F) << 6) | ((unsigned char)s[i + 1] & 0x3F);
+        return(2);
+    }
+    if((c & 0xF0) == 0xE0 && i + 2 < s.size())
+    {
+        *cp = ((uint32_t)(c & 0x0F) << 12)
+            | ((uint32_t)((unsigned char)s[i + 1] & 0x3F) << 6)
+            | ((unsigned char)s[i + 2] & 0x3F);
+        return(3);
+    }
+    if((c & 0xF8) == 0xF0 && i + 3 < s.size())
+    {
+        *cp = ((uint32_t)(c & 0x07) << 18)
+            | ((uint32_t)((unsigned char)s[i + 1] & 0x3F) << 12)
+            | ((uint32_t)((unsigned char)s[i + 2] & 0x3F) << 6)
+            | ((unsigned char)s[i + 3] & 0x3F);
+        return(4);
+    }
+
+    *cp = c;
+    return(1);
+}
+
+static string latin1ToUtf8(const char *szStr, size_t len)
+{
+    string out;
+    out.reserve(len * 2);
+    for(size_t i = 0; i < len; i++)
+        utf8Append(out, (unsigned char)szStr[i]);
+    return(out);
+}
+
+string IMAPHelper::ToUtf8(const char *szStr)
+{
+    if(szStr == NULL)
+        return("");
+
+    size_t len = strlen(szStr);
+    if(len == 0)
+        return("");
+    if(utf8IsValid(szStr, len))
+        return(string(szStr, len));
+    return(latin1ToUtf8(szStr, len));
+}
+
+string IMAPHelper::ToDbString(const char *szStr)
+{
+    string utf8 = IMAPHelper::ToUtf8(szStr);
+    string latin1;
+    latin1.reserve(utf8.size());
+
+    size_t i = 0;
+    while(i < utf8.size())
+    {
+        uint32_t cp = 0;
+        size_t n = utf8NextCp(utf8, i, &cp);
+        if(n == 0)
+            break;
+        if(cp > 0xFF)
+            return(utf8);
+        latin1.append(1, (char)(unsigned char)cp);
+        i += n;
+    }
+
+    return(latin1);
+}
+
+bool IMAPHelper::FolderNamesEqual(const char *szA, const char *szB)
+{
+    if(szA == NULL || szB == NULL)
+        return(szA == szB);
+    if(strcasecmp(szA, szB) == 0)
+        return(true);
+
+    string utfA = IMAPHelper::ToUtf8(szA);
+    string utfB = IMAPHelper::ToUtf8(szB);
+    if(strcasecmp(utfA.c_str(), utfB.c_str()) == 0)
+        return(true);
+
+    string dbA = IMAPHelper::ToDbString(utfA.c_str());
+    string dbB = IMAPHelper::ToDbString(utfB.c_str());
+    if(strcasecmp(dbA.c_str(), dbB.c_str()) == 0)
+        return(true);
+
+    // Legacy IMAP UTF-7 treated UTF-8 bytes as Latin-1 codepoints.
+    // Apple Mail may still SELECT those old names from a cached LIST.
+    if(strcasecmp(utfA.c_str(), dbB.c_str()) == 0)
+        return(true);
+    if(strcasecmp(dbA.c_str(), utfB.c_str()) == 0)
+        return(true);
+
+    return(false);
+}
+
+static void utf16Append(string &out, uint32_t cp)
+{
+    if(cp > 0x10FFFF)
+        cp = 0xFFFD;
+    if(cp >= 0xD800 && cp <= 0xDFFF)
+        cp = 0xFFFD;
+
+    if(cp >= 0x10000)
+    {
+        uint32_t v = cp - 0x10000;
+        uint32_t w1 = 0xD800 | (v >> 10);
+        uint32_t w2 = 0xDC00 | (v & 0x3FF);
+        out.append(1, (char)((w1 >> 8) & 0xFF));
+        out.append(1, (char)(w1 & 0xFF));
+        out.append(1, (char)((w2 >> 8) & 0xFF));
+        out.append(1, (char)(w2 & 0xFF));
+        return;
+    }
+
+    out.append(1, (char)((cp >> 8) & 0xFF));
+    out.append(1, (char)(cp & 0xFF));
+}
+
+static void flushModifiedShift(string &out, string &utf16)
+{
+    if(utf16.empty())
+        return;
+
+    char *szTemp = utils->Base64Encode(utf16.c_str(), true, (int)utf16.length());
+    out.append("&");
+    out.append(szTemp);
+    out.append("-");
+    free(szTemp);
+    utf16.clear();
+}
+
+static int modifiedBase64Value(unsigned char c)
+{
+    if(c >= 'A' && c <= 'Z')
+        return(c - 'A');
+    if(c >= 'a' && c <= 'z')
+        return(c - 'a' + 26);
+    if(c >= '0' && c <= '9')
+        return(c - '0' + 52);
+    if(c == '+')
+        return(62);
+    if(c == ',' || c == '/')
+        return(63);
+    return(-1);
+}
+
+static string decodeModifiedBase64(const string &in)
+{
+    string out;
+    unsigned int acc = 0;
+    int bits = 0;
+
+    for(size_t i = 0; i < in.size(); i++)
+    {
+        int v = modifiedBase64Value((unsigned char)in[i]);
+        if(v < 0)
+            continue;
+
+        acc = (acc << 6) | (unsigned int)v;
+        bits += 6;
+        if(bits >= 8)
+        {
+            bits -= 8;
+            out.append(1, (char)((acc >> bits) & 0xFF));
+        }
+    }
+
+    return(out);
+}
+
+static string utf16BeToUtf8(const string &utf16)
+{
+    string out;
+    size_t i = 0;
+    while(i + 1 < utf16.size())
+    {
+        uint32_t w1 = ((unsigned char)utf16[i] << 8) | (unsigned char)utf16[i + 1];
+        i += 2;
+
+        if(w1 >= 0xD800 && w1 <= 0xDBFF)
+        {
+            if(i + 1 >= utf16.size())
+                break;
+            uint32_t w2 = ((unsigned char)utf16[i] << 8) | (unsigned char)utf16[i + 1];
+            i += 2;
+            if(w2 < 0xDC00 || w2 > 0xDFFF)
+                continue;
+            uint32_t cp = 0x10000 + (((w1 & 0x3FF) << 10) | (w2 & 0x3FF));
+            utf8Append(out, cp);
+            continue;
+        }
+        if(w1 >= 0xDC00 && w1 <= 0xDFFF)
+            continue;
+
+        utf8Append(out, w1);
+    }
+    return(out);
+}
+
 /*
  * Must encode char?
  */
 bool IMAPHelper::UTF7MustEncode(char c)
 {
-    if(((c >= 0x20 && c <= 0x7E)))
-        return(false);
-    if(c == '\r' || c == '\n' || c == '\0' || c == ' ' || c == '\t')
-        return(false);
-    return(true);
+    unsigned char uc = (unsigned char)c;
+    return(uc < 0x20 || uc > 0x7E);
 }
 
 /*
- * Decode a string in modified UTF7
+ * Decode a string in modified UTF-7 (RFC 3501) to UTF-8
  */
 string IMAPHelper::StrDecode(const char *szStr)
 {
     if(szStr == NULL)
         return("");
-    string strOut(""), strTemp;
-    char c, cNext;
-    bool bDecodeMode = false;
 
+    string strOut, strTemp;
+    bool bDecodeMode = false;
     std::size_t strLength = strlen(szStr);
-    for(std::size_t i=0; i < strLength; i++)
+
+    for(std::size_t i = 0; i < strLength; i++)
     {
-        c = *(szStr+i);
-        cNext = *(szStr+i+1);
+        unsigned char c = (unsigned char)szStr[i];
 
         if(!bDecodeMode)
         {
             if(c == '&')
             {
-                if(cNext == '-')
+                if(i + 1 < strLength && szStr[i + 1] == '-')
                 {
                     strOut.append(1, '&');
                     i++;
@@ -1301,98 +1590,60 @@ string IMAPHelper::StrDecode(const char *szStr)
                 }
                 continue;
             }
-            else
-                strOut.append(1, c);
+
+            strOut.append(1, (char)c);
+        }
+        else if(c == '-')
+        {
+            strOut.append(utf16BeToUtf8(decodeModifiedBase64(strTemp)));
+            strTemp = "";
+            bDecodeMode = false;
         }
         else
-        {
-            if(c == '-')
-            {
-                bDecodeMode = false;
-                char *szTemp = utils->Base64Decode((char *)strTemp.c_str(), true);
-
-                int j = 0;
-                while(true)
-                {
-                    if(*(szTemp+j) == '\0'
-                        && *(szTemp+j+1) == '\0')
-                        break;
-                    else
-                        if(*(szTemp+j) != '\0')
-                            strOut.append(1, *(szTemp+j));
-                    j++;
-                }
-
-                strOut.append(szTemp);
-                free(szTemp);
-                strTemp = "";
-            }
-            else
-            {
-                strTemp.append(1, c);
-            }
-        }
+            strTemp.append(1, (char)c);
     }
 
-    return(strOut);
+    if(bDecodeMode)
+        strOut.append(utf16BeToUtf8(decodeModifiedBase64(strTemp)));
+
+    return(IMAPHelper::ToUtf8(strOut.c_str()));
 }
 
 /*
- * Encode a string in modified UTF7
+ * Encode a UTF-8 or Latin-1 string as modified UTF-7 (RFC 3501)
  */
 string IMAPHelper::StrEncode(const char *szStr)
 {
     if(szStr == NULL)
         return("");
-    string strOut(""), strTemp;
-    char c, cNext;
-    bool bEncodeMode = false;
 
-    if(IMAPHelper::UTF7MustEncode(*szStr))
+    string utf8 = IMAPHelper::ToUtf8(szStr);
+    string strOut, utf16;
+
+    size_t i = 0;
+    while(i < utf8.size())
     {
-        strOut.append("&");
-        bEncodeMode = true;
-    }
+        uint32_t cp = 0;
+        size_t n = utf8NextCp(utf8, i, &cp);
+        if(n == 0)
+            break;
+        i += n;
 
-    std::size_t strLength = strlen(szStr);
-    for(std::size_t i=0; i < strLength; i++)
-    {
-        c = *(szStr+i);
-        cNext = *(szStr+i+1);
-
-        if(bEncodeMode)
+        if(cp >= 0x20 && cp <= 0x7E && cp != '&')
         {
-            strTemp.append(1, '\0');
-            strTemp.append(1, c);
+            flushModifiedShift(strOut, utf16);
+            strOut.append(1, (char)cp);
+        }
+        else if(cp == '&')
+        {
+            flushModifiedShift(strOut, utf16);
+            strOut.append("&-");
         }
         else
-        {
-            if(c == 0x26)
-                strOut.append("&-");
-            else
-                strOut.append(1, c);
-        }
-
-        if(IMAPHelper::UTF7MustEncode(cNext))
-        {
-            if(!bEncodeMode)
-            {
-                strOut.append("&");
-                strTemp = "";
-                bEncodeMode = true;
-            }
-        }
-        else if(bEncodeMode)
-        {
-            char *szTemp = utils->Base64Encode((char *)strTemp.c_str(), true, (int)strTemp.length());
-            strOut.append(szTemp);
-            strOut.append("-");
-            strTemp = "";
-            free(szTemp);
-            bEncodeMode = false;
-        }
+            utf16Append(utf16, cp);
     }
 
+    flushModifiedShift(strOut, utf16);
     return(strOut);
 }
 
@@ -1649,7 +1900,7 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
     {
         IMAPFolder f;
         f.iID = atoi(row[1]);
-        f.strName = row[0];
+        f.strName = IMAPHelper::ToUtf8(row[0] ? row[0] : "");
 
         size_t pos;
         while((pos = f.strName.find('/')) != string::npos)
@@ -1707,12 +1958,17 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
         }
     }
 
+    string sentName = IMAPHelper::ToUtf8(SENT);
+    string draftsName = IMAPHelper::ToUtf8(DRAFTS);
+    string spamName = IMAPHelper::ToUtf8(SPAM);
+    string trashName = IMAPHelper::ToUtf8(TRASH);
+
     // sent folder
     IMAPFolder fSent;
     fSent.iID = -2;
     fSent.strReference = "";
-    fSent.strName = SENT;
-    fSent.strFullName = SENT;
+    fSent.strName = sentName;
+    fSent.strFullName = sentName;
     fSent.strAttributes = "\\Sent";
     fSent.bSubscribed = true;
     fSent.bIntelligent = false;
@@ -1722,8 +1978,8 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
     IMAPFolder fDrafts;
     fDrafts.iID = -3;
     fDrafts.strReference = "";
-    fDrafts.strName = DRAFTS;
-    fDrafts.strFullName = DRAFTS;
+    fDrafts.strName = draftsName;
+    fDrafts.strFullName = draftsName;
     fDrafts.strAttributes = "\\Drafts";
     fDrafts.bSubscribed = true;
     fDrafts.bIntelligent = false;
@@ -1733,8 +1989,8 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
     IMAPFolder fSpam;
     fSpam.iID = -4;
     fSpam.strReference = "";
-    fSpam.strName = SPAM;
-    fSpam.strFullName = SPAM;
+    fSpam.strName = spamName;
+    fSpam.strFullName = spamName;
     fSpam.strAttributes = "\\Junk";
     fSpam.bSubscribed = true;
     fSpam.bIntelligent = false;
@@ -1744,8 +2000,8 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
     IMAPFolder fTrash;
     fTrash.iID = -5;
     fTrash.strReference = "";
-    fTrash.strName = TRASH;
-    fTrash.strFullName = TRASH;
+    fTrash.strName = trashName;
+    fTrash.strFullName = trashName;
     fTrash.strAttributes = "\\Trash";
     fTrash.bSubscribed = true;
     fTrash.bIntelligent = false;

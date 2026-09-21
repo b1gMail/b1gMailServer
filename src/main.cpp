@@ -184,6 +184,9 @@ int main(int argc, char *argv[])
         }
 
 #ifndef WIN32
+#ifndef __APPLE__
+        utils->EnsureLogrotate();
+#endif
         if (chdir("/opt/b1gmailserver") != 0)
         {
             throw Core::Exception("Failed to chdir to /opt/b1gmailserver!");
