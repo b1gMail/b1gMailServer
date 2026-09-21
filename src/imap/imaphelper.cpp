@@ -1383,6 +1383,137 @@ static string latin1ToUtf8(const char *szStr, size_t len)
     return(out);
 }
 
+// Apple Mail sends NFD (a + U+0308) as modified UTF-7. Compose to NFC for utf8mb4.
+static uint32_t composeLatin1(uint32_t base, uint32_t mark)
+{
+    if(mark == 0x0308)
+    {
+        if(base == 'A') return(0xC4);
+        if(base == 'E') return(0xCB);
+        if(base == 'I') return(0xCF);
+        if(base == 'O') return(0xD6);
+        if(base == 'U') return(0xDC);
+        if(base == 'a') return(0xE4);
+        if(base == 'e') return(0xEB);
+        if(base == 'i') return(0xEF);
+        if(base == 'o') return(0xF6);
+        if(base == 'u') return(0xFC);
+        if(base == 'y') return(0xFF);
+    }
+    else if(mark == 0x0301)
+    {
+        if(base == 'A') return(0xC1);
+        if(base == 'E') return(0xC9);
+        if(base == 'I') return(0xCD);
+        if(base == 'O') return(0xD3);
+        if(base == 'U') return(0xDA);
+        if(base == 'Y') return(0xDD);
+        if(base == 'a') return(0xE1);
+        if(base == 'e') return(0xE9);
+        if(base == 'i') return(0xED);
+        if(base == 'o') return(0xF3);
+        if(base == 'u') return(0xFA);
+        if(base == 'y') return(0xFD);
+    }
+    else if(mark == 0x0300)
+    {
+        if(base == 'A') return(0xC0);
+        if(base == 'E') return(0xC8);
+        if(base == 'I') return(0xCC);
+        if(base == 'O') return(0xD2);
+        if(base == 'U') return(0xD9);
+        if(base == 'a') return(0xE0);
+        if(base == 'e') return(0xE8);
+        if(base == 'i') return(0xEC);
+        if(base == 'o') return(0xF2);
+        if(base == 'u') return(0xF9);
+    }
+    else if(mark == 0x0302)
+    {
+        if(base == 'A') return(0xC2);
+        if(base == 'E') return(0xCA);
+        if(base == 'I') return(0xCE);
+        if(base == 'O') return(0xD4);
+        if(base == 'U') return(0xDB);
+        if(base == 'a') return(0xE2);
+        if(base == 'e') return(0xEA);
+        if(base == 'i') return(0xEE);
+        if(base == 'o') return(0xF4);
+        if(base == 'u') return(0xFB);
+    }
+    else if(mark == 0x0303)
+    {
+        if(base == 'A') return(0xC3);
+        if(base == 'N') return(0xD1);
+        if(base == 'O') return(0xD5);
+        if(base == 'a') return(0xE3);
+        if(base == 'n') return(0xF1);
+        if(base == 'o') return(0xF5);
+    }
+    else if(mark == 0x030A)
+    {
+        if(base == 'A') return(0xC5);
+        if(base == 'a') return(0xE5);
+    }
+    else if(mark == 0x0327)
+    {
+        if(base == 'C') return(0xC7);
+        if(base == 'c') return(0xE7);
+    }
+    return(0);
+}
+
+static void flushCp(string &utf8, uint32_t *pending)
+{
+    if(*pending == 0xFFFFFFFF)
+        return;
+    utf8Append(utf8, *pending);
+    *pending = 0xFFFFFFFF;
+}
+
+static string hexEncode(const string &in)
+{
+    static const char *hex = "0123456789ABCDEF";
+    string out;
+    out.reserve(in.size() * 2);
+    for(size_t i = 0; i < in.size(); i++)
+    {
+        unsigned char c = (unsigned char)in[i];
+        out.append(1, hex[c >> 4]);
+        out.append(1, hex[c & 0x0F]);
+    }
+    return(out);
+}
+
+static int hexNibble(char c)
+{
+    if(c >= '0' && c <= '9')
+        return(c - '0');
+    if(c >= 'A' && c <= 'F')
+        return(c - 'A' + 10);
+    if(c >= 'a' && c <= 'f')
+        return(c - 'a' + 10);
+    return(-1);
+}
+
+static string hexDecode(const char *szHex)
+{
+    if(szHex == NULL || szHex[0] == '\0')
+        return("");
+
+    size_t len = strlen(szHex);
+    string out;
+    out.reserve(len / 2);
+    for(size_t i = 0; i + 1 < len; i += 2)
+    {
+        int hi = hexNibble(szHex[i]), lo = hexNibble(szHex[i + 1]);
+        if(hi < 0 || lo < 0)
+            break;
+        out.append(1, (char)((hi << 4) | lo));
+    }
+    return(out);
+}
+
 string IMAPHelper::ToUtf8(const char *szStr)
 {
     if(szStr == NULL)
@@ -1399,9 +1530,10 @@ string IMAPHelper::ToUtf8(const char *szStr)
 string IMAPHelper::ToDbString(const char *szStr)
 {
     string utf8 = IMAPHelper::ToUtf8(szStr);
-    string latin1;
-    latin1.reserve(utf8.size());
+    string out;
+    out.reserve(utf8.size());
 
+    uint32_t pending = 0xFFFFFFFF;
     size_t i = 0;
     while(i < utf8.size())
     {
@@ -1409,13 +1541,34 @@ string IMAPHelper::ToDbString(const char *szStr)
         size_t n = utf8NextCp(utf8, i, &cp);
         if(n == 0)
             break;
-        if(cp > 0xFF)
-            return(utf8);
-        latin1.append(1, (char)(unsigned char)cp);
         i += n;
-    }
 
-    return(latin1);
+        if(cp >= 0x0300 && cp <= 0x036F && pending != 0xFFFFFFFF)
+        {
+            uint32_t composed = composeLatin1(pending, cp);
+            if(composed != 0)
+            {
+                pending = composed;
+                continue;
+            }
+        }
+
+        flushCp(out, &pending);
+        pending = cp;
+    }
+    flushCp(out, &pending);
+    return(out);
+}
+
+string IMAPHelper::SqlUtf8Expr(const char *szStr)
+{
+    string utf8 = IMAPHelper::ToDbString(szStr);
+    if(utf8.empty())
+        return("''");
+
+    // Hex literal with charset introducer: does not pass SET NAMES latin1.
+    // '%q' of Latin-1 0xE4 into utf8mb4 becomes '?' (invalid UTF-8).
+    return(string("_utf8mb4 0x") + hexEncode(utf8));
 }
 
 bool IMAPHelper::FolderNamesEqual(const char *szA, const char *szB)
@@ -1892,7 +2045,7 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
 {
     // fetch all folders of user and store by parent
     map<int, vector<IMAPFolder> > foldersByParent;
-    MySQL_Result *res = db->Query("SELECT titel,id,parent,subscribed,intelligent FROM bm60_folders WHERE userid='%d' %sORDER BY titel ASC",
+    MySQL_Result *res = db->Query("SELECT HEX(titel),id,parent,subscribed,intelligent FROM bm60_folders WHERE userid='%d' %sORDER BY titel ASC",
                                   iUserID,
                                   (strcmp(cfg->Get("imap_intelligentfolders"), "1") == 0 ? "" : "AND intelligent=0 "));
     MYSQL_ROW row;
@@ -1900,7 +2053,7 @@ IMAPFolderList IMAPHelper::FetchFolders(MySQL_DB *db, int iUserID)
     {
         IMAPFolder f;
         f.iID = atoi(row[1]);
-        f.strName = IMAPHelper::ToUtf8(row[0] ? row[0] : "");
+        f.strName = IMAPHelper::ToUtf8(hexDecode(row[0] ? row[0] : "").c_str());
 
         size_t pos;
         while((pos = f.strName.find('/')) != string::npos)

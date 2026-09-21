@@ -74,6 +74,7 @@ public:
     static string StrDecode(const char *szStr);
     static string ToUtf8(const char *szStr);
     static string ToDbString(const char *szStr);
+    static string SqlUtf8Expr(const char *szStr);
     static bool FolderNamesEqual(const char *szA, const char *szB);
     static bool Match(const char *szRegexp, const char *szStr);
     static string TransformWildcards(const char *szStr);

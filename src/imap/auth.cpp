@@ -817,8 +817,8 @@ void IMAP::Rename(char *szLine)
                     if(fFolder.iID == 0)
                     {
                         // create dest mailbox, ...
-                        db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES('%q','%d','%d',1)",
-                            IMAPHelper::ToDbString(strNewMailboxName.c_str()).c_str(),
+                        db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES(%s,'%d','%d',1)",
+                            IMAPHelper::SqlUtf8Expr(strNewMailboxName.c_str()).c_str(),
                             this->iUserID,
                             !fRefFolder ? -1 : fRefFolder.iID);
                         int iFolderID = (int)db->InsertId();
@@ -843,8 +843,8 @@ void IMAP::Rename(char *szLine)
                     else
                     {
                         // change title and parent of folder
-                        db->Query("UPDATE bm60_folders SET titel='%q', parent='%d' WHERE id='%d'",
-                            IMAPHelper::ToDbString(strNewMailboxName.c_str()).c_str(),
+                        db->Query("UPDATE bm60_folders SET titel=%s, parent='%d' WHERE id='%d'",
+                            IMAPHelper::SqlUtf8Expr(strNewMailboxName.c_str()).c_str(),
                             !fRefFolder ? -1 : fRefFolder.iID,
                             fFolder.iID);
                         IMAPHelper::IncGeneration(db, iUserID, 1, 1);
@@ -1196,8 +1196,12 @@ void IMAP::Create(char *szLine)
 
             if(bContinue)
             {
-                db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES('%q','%d','%d',0)",
-                    IMAPHelper::ToDbString(strMailboxName.c_str()).c_str(),
+                db->Log(CMP_IMAP, PRIO_NOTE, utils->PrintF("[%s] CREATE mailbox=%s sql=%s",
+                    this->strPeer.c_str(),
+                    cArgs.at(2).c_str(),
+                    IMAPHelper::SqlUtf8Expr(strMailboxName.c_str()).c_str()));
+                db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES(%s,'%d','%d',0)",
+                    IMAPHelper::SqlUtf8Expr(strMailboxName.c_str()).c_str(),
                     this->iUserID,
                     !fParent ? -1 : fParent.iID);
                 db->Log(CMP_IMAP, PRIO_NOTE, utils->PrintF("[%s] CREATE: Folder %d created",
