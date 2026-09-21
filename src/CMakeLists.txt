@@ -46,6 +46,19 @@ set(SOURCES
 	core/dns.cpp
 	core/exception.cpp
 	core/md5.c
+	# third-party crypto (git submodules under third_party/)
+	third_party/libbcrypt/bcrypt.c
+	third_party/libbcrypt/crypt_blowfish/crypt_blowfish.c
+	third_party/libbcrypt/crypt_blowfish/crypt_gensalt.c
+	third_party/libbcrypt/crypt_blowfish/wrapper.c
+	third_party/phc-winner-argon2/src/argon2.c
+	third_party/phc-winner-argon2/src/core.c
+	third_party/phc-winner-argon2/src/encoding.c
+	third_party/phc-winner-argon2/src/ref.c
+	third_party/phc-winner-argon2/src/thread.c
+	third_party/phc-winner-argon2/src/blake2/blake2b.c
+	core/passwordhash.cpp
+	core/apppassword.cpp
 	core/mysql_db.cpp
 	core/mysql_result.cpp
 	core/process.cpp
@@ -104,7 +117,16 @@ find_package(OpenSSL REQUIRED)
 find_package(PCRE REQUIRED)
 find_package(mariadbclient REQUIRED)
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${OPENSSL_INCLUDE_DIR} ${PCRE_INCLUDE_DIRS} ${MARIADBCLIENT_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PRIVATE
+	${CMAKE_CURRENT_BINARY_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/third_party/libbcrypt
+	${CMAKE_CURRENT_SOURCE_DIR}/third_party/libbcrypt/crypt_blowfish
+	${CMAKE_CURRENT_SOURCE_DIR}/third_party/phc-winner-argon2/include
+	${CMAKE_CURRENT_SOURCE_DIR}/third_party/phc-winner-argon2/src
+	${OPENSSL_INCLUDE_DIR}
+	${PCRE_INCLUDE_DIRS}
+	${MARIADBCLIENT_INCLUDE_DIRS}
+	${ZLIB_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${PCRE_LIBRARIES} ${MARIADBCLIENT_LIBRARIES} dl pthread)
 
 if(WIN32)
