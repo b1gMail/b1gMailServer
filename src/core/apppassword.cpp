@@ -18,6 +18,8 @@ struct AppPasswordPrefs
     bool mailEnabled;
     string mailMode;
 
+    // Defaults match b1gMail BMAppPassword when prefs columns are absent:
+    // global feature on, mail scopes off, mode off → no mail app-password path.
     AppPasswordPrefs()
         : globallyEnabled(true), mailEnabled(false), mailMode("off")
     {
@@ -54,6 +56,14 @@ char FailbanTypeForScope(const string &scope)
 
 AppPasswordPrefs LoadAppPasswordPrefs()
 {
+    // Cached for the lifetime of the process (BMS workers are short/long-lived
+    // but prefs rarely change; avoids a prefs SELECT on every AUTH).
+    static bool loaded = false;
+    static AppPasswordPrefs cached;
+
+    if(loaded)
+        return cached;
+
     AppPasswordPrefs prefs;
     try
     {
@@ -71,8 +81,12 @@ AppPasswordPrefs LoadAppPasswordPrefs()
     }
     catch(Core::Exception &)
     {
+        // older b1gMail without app-password prefs columns → defaults above
     }
-    return prefs;
+
+    cached = prefs;
+    loaded = true;
+    return cached;
 }
 
 bool ScopeInList(const string &scopeCsv, const string &requiredScope)
@@ -113,7 +127,7 @@ bool VerifyAppPasswordRows(int userID, const string &passwordPlain, const string
         *matchedID = 0;
 
     int matchID = 0;
-    int now = (int)time(NULL);
+    time_t now = time(NULL);
     MySQL_Result *res = db->Query(
         "SELECT `id`,`password_hash`,`scope`,`expires`,`revoked_at` FROM bm60_app_passwords WHERE `user`=%d",
         userID);
@@ -121,16 +135,20 @@ bool VerifyAppPasswordRows(int userID, const string &passwordPlain, const string
     MYSQL_ROW row;
     while((row = res->FetchRow()))
     {
-        string hash = row[1] ? row[1] : "";
-        if(!utils->VerifyModernPassword(passwordPlain, hash))
+        // Cheap rejects first — avoid bcrypt/Argon2 unless the row is a candidate.
+        if((row[4] ? atol(row[4]) : 0) != 0)
             continue;
-        if((row[4] ? atoi(row[4]) : 0) != 0)
-            continue;
-        int expires = row[3] ? atoi(row[3]) : 0;
+        time_t expires = row[3] ? (time_t)atol(row[3]) : 0;
         if(expires != 0 && expires < now)
             continue;
         if(!ScopeInList(row[2] ? row[2] : "", requiredScope))
             continue;
+
+        string hash = row[1] ? row[1] : "";
+        if(!utils->VerifyModernPassword(passwordPlain, hash))
+            continue;
+
+        // Keep iterating for timing parity among candidate rows.
         if(matchID == 0)
             matchID = row[0] ? atoi(row[0]) : 0;
     }
@@ -198,6 +216,8 @@ bool Utils::UserHasMfaLoginReady(int userID)
             return true;
         if(recoveryMode == "altmail")
             return true;
+        // Parity with BMMfa::RequiresMfaVerifyAtLogin(): enabled row with a TOTP
+        // secret still counts if flags are inconsistent (e.g. aborted setup).
         return !totpSecret.empty();
     }
     catch(Core::Exception &)
@@ -237,8 +257,11 @@ void Utils::TouchAppPassword(int id, const string &ip, const string &scope)
     string scopeTrim = scope.length() > 16 ? scope.substr(0, 16) : scope;
     try
     {
-        db->Query("UPDATE bm60_app_passwords SET `last_used`=%d, `last_ip`='%q', `last_scope`='%q' WHERE `id`=%d",
-            (int)time(NULL), ipTrim.c_str(), scopeTrim.c_str(), id);
+        // Store unix time as 64-bit-safe decimal string for MySQL INT/BIGINT columns.
+        char szNow[32];
+        snprintf(szNow, sizeof(szNow), "%lld", (long long)time(NULL));
+        db->Query("UPDATE bm60_app_passwords SET `last_used`=%s, `last_ip`='%q', `last_scope`='%q' WHERE `id`=%d",
+            szNow, ipTrim.c_str(), scopeTrim.c_str(), id);
     }
     catch(Core::Exception &)
     {
@@ -256,6 +279,7 @@ bool Utils::AuthenticateMailPassword(int userID,
         return false;
 
     // Throttle / reject before bcrypt/Argon2 (and before app-password loops).
+    // Fail-open on failban errors so a DB issue cannot lock out all mail logins.
     if(!peerIP.empty() && peerIP != "(unknown)")
     {
         try
@@ -268,15 +292,7 @@ bool Utils::AuthenticateMailPassword(int userID,
         }
     }
 
-    AppPasswordPrefs prefs;
-    try
-    {
-        prefs = LoadAppPasswordPrefs();
-    }
-    catch(...)
-    {
-    }
-
+    AppPasswordPrefs prefs = LoadAppPasswordPrefs();
     const bool allowAppPasswords = prefs.mailScopesActive() && prefs.mailMode != "off";
 
     if(allowAppPasswords)
