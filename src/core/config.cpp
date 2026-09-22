@@ -24,6 +24,40 @@ using namespace Core;
 
 #define CHECKVAL(x)     if(this->Get(x) == NULL) { throw Core::Exception("Required configuration value not defined", x); }
 
+static bool IsLocalOverrideKey(const string &key)
+{
+    static const char *keys[] = {
+        "selffolder",
+        "datafolder",
+        "php_path",
+        "outbound_sendmail_path",
+        "b1gmta_host",
+        "loglevel",
+        "pop3_timeout",
+        "imap_timeout",
+        "smtp_timeout",
+        "ftp_timeout",
+        "queue_timeout",
+        "queue_interval",
+        "queue_threads",
+        "queue_maxthreads",
+        "inbound_reuse_process",
+        "control_addr",
+        "ssl_cipher_list",
+        "ssl_ciphersuites",
+        "ssl_min_version",
+        "ssl_max_version",
+        NULL
+    };
+
+    for(int i = 0; keys[i] != NULL; i++)
+    {
+        if(key == keys[i])
+            return(true);
+    }
+    return(false);
+}
+
 Config::Config()
 {
     pthread_mutex_init(&this->mutex, NULL);
@@ -64,6 +98,7 @@ Config::Config()
             string key = utils->Trim(string(szBuffer, szEQ-szBuffer));
             string val = utils->Trim(string(szEQ+1));
             this->items[key] = val;
+            this->fileKeys.insert(key);
         }
     }
     fclose(fp);
@@ -76,6 +111,9 @@ Config::~Config()
 
 void Config::ReadDBConfig()
 {
+    vector<string> keptFromFile;
+
+    {
     Core::LockGuard lg(&this->mutex);
 
     // bm60_prefs
@@ -87,7 +125,7 @@ void Config::ReadDBConfig()
     {
         for(unsigned int i = 0; i<iNumFields; i++)
         {
-            this->items[fields[i].name] = row[i];
+            this->SetFromDB(fields[i].name, row[i], &keptFromFile);
         }
     }
     delete res;
@@ -100,7 +138,7 @@ void Config::ReadDBConfig()
     {
         for(unsigned int i = 0; i<iNumFields; i++)
         {
-            this->items[fields[i].name] = row[i];
+            this->SetFromDB(fields[i].name, row[i], &keptFromFile);
         }
     }
     delete res;
@@ -181,7 +219,7 @@ void Config::ReadDBConfig()
         {
             for (unsigned int i = 0; i<iNumFields; i++)
             {
-                this->items[fields[i].name] = row[i];
+                this->SetFromDB(fields[i].name, row[i], &keptFromFile);
             }
         }
         delete res;
@@ -217,6 +255,40 @@ void Config::ReadDBConfig()
     this->items["enable_sendstats"] = bHaveSendStats ? "1" : "0";
     this->items["enable_aliaslogin"] = bHaveAliasLoginField ? "1" : "0";
     this->items["enable_dnsbl_matchips"] = bHaveDNSBLMatchIPsField ? "1" : "0";
+
+    this->EnsureTrailingSlash("selffolder");
+    this->EnsureTrailingSlash("datafolder");
+    }
+
+    for(size_t i = 0; i < keptFromFile.size(); i++)
+    {
+        db->Log(CMP_CORE, PRIO_NOTE, utils->PrintF(
+            "Keeping local %s from b1gmailserver.cfg (not using DB value)",
+            keptFromFile[i].c_str()));
+    }
+}
+
+void Config::SetFromDB(const string &key, const char *value, vector<string> *keptFromFile)
+{
+    if(this->fileKeys.find(key) != this->fileKeys.end() && IsLocalOverrideKey(key))
+    {
+        if(keptFromFile != NULL)
+            keptFromFile->push_back(key);
+        return;
+    }
+
+    this->items[key] = (value != NULL) ? value : "";
+}
+
+void Config::EnsureTrailingSlash(const char *key)
+{
+    map<string, string>::iterator it = this->items.find(key);
+    if(it == this->items.end() || it->second.empty())
+        return;
+
+    char last = it->second[it->second.size() - 1];
+    if(last != '/' && last != '\\')
+        it->second.append(1, PATH_SEP);
 }
 
 void Config::Dump()
@@ -265,6 +337,10 @@ const char *Config::Get(const char *szKey)
         && strcmp(szKey, "queue_dir") != 0
         && strcmp(szKey, "disable_iplog") != 0
         && strcmp(szKey, "logfile") != 0
+        && strcmp(szKey, "logrotate") != 0
+        && strcmp(szKey, "logrotate_interval") != 0
+        && strcmp(szKey, "logrotate_rotate") != 0
+        && strcmp(szKey, "logrotate_compress") != 0
         && strcmp(szKey, "user") != 0
         && strcmp(szKey, "group") != 0
         && strcmp(szKey, "client_addr") != 0

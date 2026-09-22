@@ -26,6 +26,7 @@
 #include <pthread.h>
 
 #include <map>
+#include <set>
 
 namespace Core
 {
@@ -43,7 +44,11 @@ namespace Core
         void Dump();
 
     private:
+        void SetFromDB(const string &key, const char *value, vector<string> *keptFromFile);
+        void EnsureTrailingSlash(const char *key);
+
         map<string, string> items;
+        set<string> fileKeys;
         pthread_mutex_t mutex;
 
         Config(const Config &);

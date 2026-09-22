@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <cstring>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +36,96 @@
 #define _(x)        (lang == NULL ? "NULL" : lang->lang[x])
 
 using namespace std;
+
+static bool cfgLineHasKey(const string &line, const char *key)
+{
+    string trimmed = line;
+    size_t start = trimmed.find_first_not_of(" \t");
+    if(start == string::npos)
+        return(false);
+    trimmed = trimmed.substr(start);
+    if(!trimmed.empty() && trimmed[0] == '#')
+    {
+        trimmed = trimmed.substr(1);
+        start = trimmed.find_first_not_of(" \t");
+        if(start == string::npos)
+            return(false);
+        trimmed = trimmed.substr(start);
+    }
+
+    size_t keyLen = strlen(key);
+    if(trimmed.compare(0, keyLen, key) != 0)
+        return(false);
+    size_t pos = keyLen;
+    while(pos < trimmed.size() && (trimmed[pos] == ' ' || trimmed[pos] == '\t'))
+        ++pos;
+    return(pos < trimmed.size() && trimmed[pos] == '=');
+}
+
+static void appendCfgOverrideComments()
+{
+    const char *cfgPath = "/opt/b1gmailserver/b1gmailserver.cfg";
+    ifstream in(cfgPath);
+    if(!in)
+        return;
+
+    string line, content;
+    bool haveOverrides = false;
+    bool haveLogrotateDocs = false;
+    bool haveLogfile = false;
+    bool haveLogrotate = false;
+    bool haveInterval = false;
+    bool haveRotate = false;
+    bool haveCompress = false;
+    while(getline(in, line))
+    {
+        content += line + "\n";
+        if(line.find("Optional per-host overrides") != string::npos
+            || cfgLineHasKey(line, "selffolder")
+            || cfgLineHasKey(line, "datafolder")
+            || cfgLineHasKey(line, "php_path")
+            || cfgLineHasKey(line, "loglevel"))
+            haveOverrides = true;
+        if(line.find("File logging / logrotate") != string::npos)
+            haveLogrotateDocs = true;
+        if(cfgLineHasKey(line, "logfile"))
+            haveLogfile = true;
+        if(cfgLineHasKey(line, "logrotate"))
+            haveLogrotate = true;
+        if(cfgLineHasKey(line, "logrotate_interval"))
+            haveInterval = true;
+        if(cfgLineHasKey(line, "logrotate_rotate"))
+            haveRotate = true;
+        if(cfgLineHasKey(line, "logrotate_compress"))
+            haveCompress = true;
+    }
+    in.close();
+    if(haveOverrides && haveLogrotateDocs)
+        return;
+
+    ofstream out(cfgPath, ios::app);
+    if(!out)
+        return;
+    if(!content.empty() && content[content.size() - 1] != '\n')
+        out << endl;
+    if(!haveOverrides)
+    {
+        out << endl;
+        Utils::writeCfgOverrideComments(out);
+    }
+    if(!haveLogrotateDocs)
+    {
+        out << endl;
+        Utils::writeCfgLogrotateComments(out,
+            !haveLogfile,
+            !haveLogrotate,
+            !haveInterval,
+            !haveRotate,
+            !haveCompress);
+    }
+    out.close();
+    chmod(cfgPath, 0600);
+}
 
 UI ui("Setup - b1gMailServer " VER_STR " (" BMS_BUILD_ARCH ")");
 Language *lang = NULL;
@@ -161,6 +252,9 @@ bool doUpdate()
     // set config permissions
     //system("chown root /opt/b1gmailserver/b1gmailserver.cfg >/dev/null 2>/dev/null");
     //chmod("/opt/b1gmailserver/b1gmailserver.cfg", 0600);
+
+    appendCfgOverrideComments();
+    Utils::ensureLogrotate();
 
     // write version file
     ofstream versionFile("/opt/b1gmailserver/version", ios::trunc|ios::out);
