@@ -42,9 +42,13 @@ namespace Core
         bool IsOpen();
         bool IsRunning();
         void SetCloseTimeout(int val);
+        bool ReadLine(char *buf, std::size_t bufSize, int timeoutSeconds);
+        bool WriteFully(const void *data, std::size_t len, int timeoutSeconds);
 
     private:
         int EndProcess(int *quitSignal = NULL);
+        bool WaitForReadable(int timeoutSeconds);
+        bool WaitForWritable(int timeoutSeconds);
 #ifndef WIN32
         pid_t pid;
 #else
@@ -56,6 +60,7 @@ namespace Core
         FILE *fpIn;
         FILE *fpOut;
         std::string commandLine;
+        std::string readBuf;
         bool open;
 
         Process(const Process &);
