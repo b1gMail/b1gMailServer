@@ -76,7 +76,7 @@ void IMAP::Append(char *szLine)
             db->Log(CMP_IMAP, PRIO_DEBUG, utils->PrintF("Comparing folder \"%s\" to \"%s\"",
                 strMailboxName.c_str(),
                 this->cFolders.at(i).strFullName.c_str()));
-            if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
             {
                 fFolder = this->cFolders.at(i);
                 break;
@@ -283,7 +283,7 @@ void IMAP::Select(char *szLine, bool bEXAMINE)
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
         {
-            if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
             {
                 fFolder = this->cFolders.at(i);
                 break;
@@ -524,7 +524,7 @@ void IMAP::XApplePushService(char *szLine)
                 // search mailbox
                 for(int i=0; i<(int)this->cFolders.size(); i++)
                 {
-                    if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+                    if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
                     {
                         folderIDs.push_back(this->cFolders.at(i).iID);
                         break;
@@ -741,7 +741,7 @@ void IMAP::Rename(char *szLine)
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
         {
-            if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
             {
                 fFolder = this->cFolders.at(i);
                 break;
@@ -762,7 +762,7 @@ void IMAP::Rename(char *szLine)
             IMAPFolder fDestFolder;
             for(int i=0; i<(int)this->cFolders.size(); i++)
             {
-                if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strNewMailboxName.c_str()) == 0)
+                if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strNewMailboxName.c_str()))
                 {
                     fDestFolder = this->cFolders.at(i);
                     break;
@@ -792,7 +792,7 @@ void IMAP::Rename(char *szLine)
                     // search ref
                     for(int i=0; i<(int)this->cFolders.size(); i++)
                     {
-                        if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strNewMailboxRef.c_str()) == 0)
+                        if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strNewMailboxRef.c_str()))
                         {
                             fRefFolder = this->cFolders.at(i);
                             break;
@@ -817,8 +817,8 @@ void IMAP::Rename(char *szLine)
                     if(fFolder.iID == 0)
                     {
                         // create dest mailbox, ...
-                        db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES('%q','%d','%d',1)",
-                            strNewMailboxName.c_str(),
+                        db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES(%s,'%d','%d',1)",
+                            IMAPHelper::SqlUtf8Expr(strNewMailboxName.c_str()).c_str(),
                             this->iUserID,
                             !fRefFolder ? -1 : fRefFolder.iID);
                         int iFolderID = (int)db->InsertId();
@@ -843,8 +843,8 @@ void IMAP::Rename(char *szLine)
                     else
                     {
                         // change title and parent of folder
-                        db->Query("UPDATE bm60_folders SET titel='%q', parent='%d' WHERE id='%d'",
-                            strNewMailboxName.c_str(),
+                        db->Query("UPDATE bm60_folders SET titel=%s, parent='%d' WHERE id='%d'",
+                            IMAPHelper::SqlUtf8Expr(strNewMailboxName.c_str()).c_str(),
                             !fRefFolder ? -1 : fRefFolder.iID,
                             fFolder.iID);
                         IMAPHelper::IncGeneration(db, iUserID, 1, 1);
@@ -893,7 +893,7 @@ void IMAP::Status(char *szLine)
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
         {
-            if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
             {
                 fFolder = this->cFolders.at(i);
                 break;
@@ -923,7 +923,7 @@ void IMAP::Status(char *szLine)
                 IMAPMsgList vMsgs = IMAPHelper::FetchMessages(db, fFolder.iID, this->iUserID, this->iLimit, this->bReadonly);
 
                 printf("* STATUS \"%s\" (",
-                    IMAPHelper::Escape(strMailboxName.c_str()).c_str());
+                    IMAPHelper::Escape(IMAPHelper::StrEncode(strMailboxName.c_str()).c_str()).c_str());
 
                 for(std::size_t i=0; i < cList.size(); i++)
                 {
@@ -1003,7 +1003,7 @@ void IMAP::Delete(char *szLine)
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
         {
-            if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
             {
                 fFolder = this->cFolders.at(i);
                 break;
@@ -1013,11 +1013,11 @@ void IMAP::Delete(char *szLine)
         // exists?
         if(fFolder
             && fFolder.iID > 0
-            && strcasecmp(fFolder.strFullName.c_str(), "INBOX") != 0
-            && strcasecmp(fFolder.strFullName.c_str(), SENT) != 0
-            && strcasecmp(fFolder.strFullName.c_str(), SPAM) != 0
-            && strcasecmp(fFolder.strFullName.c_str(), DRAFTS) != 0
-            && strcasecmp(fFolder.strFullName.c_str(), TRASH) != 0)
+            && !IMAPHelper::FolderNamesEqual(fFolder.strFullName.c_str(), "INBOX")
+            && !IMAPHelper::FolderNamesEqual(fFolder.strFullName.c_str(), SENT)
+            && !IMAPHelper::FolderNamesEqual(fFolder.strFullName.c_str(), SPAM)
+            && !IMAPHelper::FolderNamesEqual(fFolder.strFullName.c_str(), DRAFTS)
+            && !IMAPHelper::FolderNamesEqual(fFolder.strFullName.c_str(), TRASH))
         {
             db->Log(CMP_IMAP, PRIO_NOTE, utils->PrintF("[%s] DELETE: Folder %d deleted",
                 this->strPeer.c_str(),
@@ -1076,7 +1076,7 @@ void IMAP::Subscribe(char *szLine, bool bUNSUBSCRIBE)
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
         {
-            if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
             {
                 fFolder = this->cFolders.at(i);
                 break;
@@ -1147,7 +1147,7 @@ void IMAP::Create(char *szLine)
         bool bExists = false;
         for(int i=0; i<(int)this->cFolders.size(); i++)
         {
-            if(strcasecmp(strMailboxName.c_str(), this->cFolders.at(i).strFullName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(strMailboxName.c_str(), this->cFolders.at(i).strFullName.c_str()))
             {
                 bExists = true;
                 break;
@@ -1176,7 +1176,7 @@ void IMAP::Create(char *szLine)
                 // search parent
                 for(int i=0; i<(int)this->cFolders.size(); i++)
                 {
-                    if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strRef.c_str()) == 0)
+                    if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strRef.c_str()))
                     {
                         fParent = this->cFolders.at(i);
                         break;
@@ -1196,8 +1196,12 @@ void IMAP::Create(char *szLine)
 
             if(bContinue)
             {
-                db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES('%q','%d','%d',0)",
-                    strMailboxName.c_str(),
+                db->Log(CMP_IMAP, PRIO_NOTE, utils->PrintF("[%s] CREATE mailbox=%s sql=%s",
+                    this->strPeer.c_str(),
+                    cArgs.at(2).c_str(),
+                    IMAPHelper::SqlUtf8Expr(strMailboxName.c_str()).c_str()));
+                db->Query("INSERT INTO bm60_folders(titel,userid,parent,subscribed) VALUES(%s,'%d','%d',0)",
+                    IMAPHelper::SqlUtf8Expr(strMailboxName.c_str()).c_str(),
                     this->iUserID,
                     !fParent ? -1 : fParent.iID);
                 db->Log(CMP_IMAP, PRIO_NOTE, utils->PrintF("[%s] CREATE: Folder %d created",
@@ -1265,7 +1269,7 @@ void IMAP::List(char *szLine, bool bLSUB)
             for(std::size_t i=0; i < this->cFolders.size(); i++)
             {
                 if((IMAPHelper::Match(strSearchPattern.c_str(), this->cFolders.at(i).strFullName.c_str())
-                    || (strcasecmp(this->cFolders.at(i).strFullName.c_str(), "INBOX") == 0
+                    || (IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), "INBOX")
                         && IMAPHelper::Match(strSearchPattern.c_str(), "INBOX")))
                     && (bLSUB ? this->cFolders.at(i).bSubscribed : true))
                 {

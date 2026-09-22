@@ -1465,7 +1465,7 @@ void IMAP::Copy(char *szLine, bool bUID)
         IMAPFolder fFolder;
         for(int i=0; i<(int)this->cFolders.size(); i++)
         {
-            if(strcasecmp(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()) == 0)
+            if(IMAPHelper::FolderNamesEqual(this->cFolders.at(i).strFullName.c_str(), strMailboxName.c_str()))
             {
                 fFolder = this->cFolders.at(i);
                 break;
