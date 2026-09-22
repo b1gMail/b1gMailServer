@@ -417,6 +417,9 @@ void MSGQueue::Run()
         // clean up smtp session pool
         this->smtpPool->cleanUp();
 
+        // recycle idle/dead inbound PHP keep-alive workers
+        this->inboundPool->cleanUp();
+
         // refresh local domains?
         if(lastLocalDomainsUpdate < (time(NULL) - LOCALDOMAINS_UPDATE_INTERVAL))
         {

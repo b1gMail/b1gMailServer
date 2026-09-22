@@ -24,6 +24,9 @@
 #include <core/core.h>
 #include <core/process.h>
 
+#define INBOUND_PROCESS_HOLDTIME        60 /* seconds idle in pool */
+#define INBOUND_PROCESS_MAX_DELIVERIES  50
+
 class InboundProcess
 {
 public:
@@ -34,6 +37,7 @@ public:
     void beginSession();
     void endSession();
     void deliver(const string &from, const string &to, FILE *stream);
+    bool shouldDiscard() const;
 
 public:
     bool keepAlive;
@@ -42,6 +46,17 @@ public:
 
 private:
     Process *proc;
+    bool failed;
+    int deliveryCount;
+
+    int getCommandTimeout() const;
+    void failPipe(const string &msg)
+#ifdef __GNUC__
+        __attribute__((noreturn))
+#endif
+        ;
+    void writePipe(const char *data, size_t len, const char *what);
+    void expectSMTP(const char *expectedCode, const char *what);
 
     InboundProcess(const InboundProcess &);
     InboundProcess &operator=(const InboundProcess &);
